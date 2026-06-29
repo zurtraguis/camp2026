@@ -1,37 +1,25 @@
 # ──────────────────────────────────────────────────────────────────────────────
-# Stack do Portainer — Acampamento RAIZ 2026
+# Stack do Portainer (Docker Swarm) — Acampamento RAIZ 2026
+#
+# IMPORTANTE: o Swarm NÃO builda imagem (ignora `build:`), apenas faz `pull`.
+# A imagem é construída e publicada no GHCR pelo workflow
+# .github/workflows/docker-publish.yml a cada push em `main`.
+#
+# Pré-requisitos no host Swarm:
+#   - Rede overlay externa do Traefik: `network_swarm_public` (já existe).
+#   - Imagem `ghcr.io/zurtraguis/camp2026:latest` acessível (pacote GHCR público,
+#     ou credenciais de registry configuradas no Portainer).
 #
 # Uso no Portainer:
-#   Stacks → Add stack → "Repository" (aponte para zurtraguis/camp2026) ou cole
-#   este arquivo. Preencha as variáveis na seção "Environment variables".
-#   O Portainer substitui os ${...} abaixo pelos valores informados.
-#
-# Build: a imagem é construída a partir do Dockerfile (contexto = repo).
-# Para usar uma imagem de registry, comente o bloco `build:` e descomente `image:`.
-#
-# Variáveis PÚBLICAS (NEXT_PUBLIC_*) precisam estar no BUILD (são inlined).
-# SEGREDOS (DATABASE_URL, STRIPE_*, SUPABASE_SERVICE_ROLE_KEY, AUTH_SECRET) vão
-# apenas em runtime, no bloco `environment:`.
+#   Stacks → acamp → Editor: cole este arquivo (ou aponte para o repo, ref main,
+#   file docker-compose.yml). Preencha os SEGREDOS em "Environment variables".
+#   As NEXT_PUBLIC_* já vêm embutidas na imagem (build-time); aqui ficam só para
+#   leitura server-side em runtime.
 # ──────────────────────────────────────────────────────────────────────────────
 
 services:
   web:
-    container_name: acamp2026
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://acamp2026.futagoautomacoes.com.br}
-        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Acampamento RAIZ 2026}
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_PIX_KEY: ${NEXT_PUBLIC_PIX_KEY}
-        NEXT_PUBLIC_PIX_RECEIVER_NAME: ${NEXT_PUBLIC_PIX_RECEIVER_NAME:-ACAMPAMENTO RAIZ}
-        NEXT_PUBLIC_PIX_RECEIVER_CITY: ${NEXT_PUBLIC_PIX_RECEIVER_CITY:-Manaus}
-        NEXT_PUBLIC_CONSENT_TERM_VERSION: ${NEXT_PUBLIC_CONSENT_TERM_VERSION:-v1-2026-06}
-    # image: ghcr.io/zurtraguis/camp2026:latest   # alternativa: registry pré-buildado
-    image: acamp2026:latest
-    restart: unless-stopped
+    image: ghcr.io/zurtraguis/camp2026:latest
 
     environment:
       NODE_ENV: production
@@ -43,7 +31,7 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       SUPABASE_COMPROVANTES_BUCKET: ${SUPABASE_COMPROVANTES_BUCKET:-comprovantes}
       AUTH_SECRET: ${AUTH_SECRET}
-      # NEXT_PUBLIC_* também em runtime (server components leem process.env):
+      # NEXT_PUBLIC_* (já inlined na imagem; repetidas p/ leitura server-side):
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://acamp2026.futagoautomacoes.com.br}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Acampamento RAIZ 2026}
       NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
@@ -53,27 +41,41 @@ services:
       NEXT_PUBLIC_PIX_RECEIVER_CITY: ${NEXT_PUBLIC_PIX_RECEIVER_CITY:-Manaus}
       NEXT_PUBLIC_CONSENT_TERM_VERSION: ${NEXT_PUBLIC_CONSENT_TERM_VERSION:-v1-2026-06}
 
-    # Porta direta (acesso sem proxy). Atrás do Traefik, pode remover este bloco.
-    ports:
-      - "${HOST_PORT:-3000}:3000"
+    networks:
+      - network_swarm_public
 
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 25s
 
-    # ── Traefik (descomente se usar o proxy do seu host; ajuste entrypoint/resolver) ──
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.acamp2026.rule=Host(`acamp2026.futagoautomacoes.com.br`)"
-    #   - "traefik.http.routers.acamp2026.entrypoints=websecure"
-    #   - "traefik.http.routers.acamp2026.tls.certresolver=letsencrypt"
-    #   - "traefik.http.services.acamp2026.loadbalancer.server.port=3000"
-    # networks:
-    #   - traefik
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        order: start-first
+        failure_action: rollback
+      # Labels Traefik DEVEM ficar em deploy.labels no Swarm (provider Swarm lê
+      # labels do serviço, não do container).
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_swarm_public"
+        - "traefik.http.routers.acamp.rule=Host(`acamp2026.futagoautomacoes.com.br`)"
+        - "traefik.http.routers.acamp.entrypoints=websecure"
+        - "traefik.http.routers.acamp.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.acamp.loadbalancer.server.port=3000"
+        # Redireciona HTTP→HTTPS (ajuste/remova se o Traefik já faz globalmente):
+        - "traefik.http.routers.acamp-http.rule=Host(`acamp2026.futagoautomacoes.com.br`)"
+        - "traefik.http.routers.acamp-http.entrypoints=web"
+        - "traefik.http.routers.acamp-http.middlewares=acamp-https"
+        - "traefik.http.middlewares.acamp-https.redirectscheme.scheme=https"
 
-# networks:
-#   traefik:
-#     external: true
+# Rede pública do Traefik — criada fora desta stack.
+networks:
+  network_swarm_public:
+    external: true

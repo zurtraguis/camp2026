@@ -1,0 +1,68 @@
+# Builda a imagem de produção e publica no GitHub Container Registry (GHCR).
+# Necessário porque o deploy é em Docker Swarm (Portainer), que NÃO builda
+# imagem — apenas faz `pull`. O Swarm consome `ghcr.io/<owner>/<repo>:latest`.
+#
+# As NEXT_PUBLIC_* são inlined em build-time → entram aqui como build-args
+# (valores públicos; iguais aos versionados em wrangler.jsonc). Segredos NÃO
+# entram no build — são injetados em runtime pela stack do Portainer.
+name: Build & Publish Docker image
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }} # zurtraguis/camp2026 (lowercase)
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Metadata (tags/labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_APP_URL=https://acamp2026.futagoautomacoes.com.br
+            NEXT_PUBLIC_APP_NAME=Acampamento RAIZ 2026
+            NEXT_PUBLIC_SUPABASE_URL=https://orhciovdecwaqqsxxdfb.supabase.co
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51Sdwf3LVGuIIljwHjq2WC8lA5Ukxmu8zRXH3XsWKL45PEyrSzgNZlv1bJZB1QLcmz0NFpr3UZVtuGsinz9Vmtl1C00qqVHdf2t
+            NEXT_PUBLIC_PIX_KEY=pixlagoinhamanaus@gmail.com
+            NEXT_PUBLIC_PIX_RECEIVER_NAME=ACAMPAMENTO RAIZ
+            NEXT_PUBLIC_PIX_RECEIVER_CITY=Manaus
+            NEXT_PUBLIC_CONSENT_TERM_VERSION=v1-2026-06
