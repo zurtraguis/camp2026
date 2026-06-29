@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "_doc": "Manifest neutro de hooks. scripts/install-hooks.mjs traduz cada hook para a config nativa da IDE-alvo.",
+  "hooks": [
+    {
+      "name": "enforce-skills",
+      "trigger": "beforeSubmit",
+      "blocking": true,
+      "entry": ".harness/hooks/enforce-skills.mjs",
+      "purpose": "Bloqueia submit se /comando não tiver skill correspondente carregada"
+    },
+    {
+      "name": "phase-doc-sync",
+      "trigger": "afterFileEdit",
+      "blocking": false,
+      "entry": ".harness/hooks/phase-doc-sync.mjs",
+      "purpose": "Mantém .harness/phase-state.json + auto-snapshot ao fechar fase"
+    },
+    {
+      "name": "tdd-loop",
+      "trigger": "onStop",
+      "blocking": false,
+      "entry": ".harness/hooks/tdd-loop.mjs",
+      "purpose": "Lembra de rodar testes se houve edit em src/ sem rodar test"
+    },
+    {
+      "name": "subagent-brief",
+      "trigger": "onSubagentStart",
+      "blocking": false,
+      "entry": ".harness/hooks/subagent-brief.mjs",
+      "purpose": "Injeta brief slim (~200 tokens) da fase ativa no contexto do subagente"
+    }
+  ]
+}

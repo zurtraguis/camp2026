@@ -1,0 +1,3 @@
+harness=BASE-CURSOR-PRO
+version=2.0
+note=Apague este arquivo se este diretório NÃO deve ser tratado como cópia nova do harness. O hook sessionStart vai consumi-lo automaticamente na primeira sessão Claude Code, executando scripts/harness-init.sh para resetar o projeto.

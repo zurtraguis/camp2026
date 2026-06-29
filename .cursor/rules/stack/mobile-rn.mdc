@@ -1,0 +1,45 @@
+---
+description: Stack mobile — React Native + Expo + Expo Router.
+alwaysApply: false
+appliesWhen: "HARNESS_STACK=mobile"
+---
+
+# Stack: mobile (React Native + Expo)
+
+## Princípios
+
+- Expo SDK 53+ managed workflow para começar; bare quando precisar.
+- Expo Router para navegação (pasta `app/`).
+- Estado: TanStack Query para servidor, Zustand para client local.
+- Estilos: Nativewind (Tailwind sintaxe) ou StyleSheet API.
+- Acessibilidade: `accessibilityRole`, `accessibilityLabel`, suporte a screen readers (VoiceOver/TalkBack).
+
+## Regras de qualidade
+
+- Lighthouse CI **não se aplica**.
+- Performance gate: tempo de inicialização do app < 2s frio em device de referência (iPhone 12 / Pixel 6).
+- Cobertura mínima: 70% (componentes + lógica), 90% em fluxos críticos (login, checkout, etc.).
+- Smoke tests: Detox ou Maestro em CI antes de `eas build`.
+
+## Layout esperado
+
+```
+app/
+├── _layout.tsx          # Root layout
+├── index.tsx            # Home
+├── (tabs)/              # Tab navigator
+└── [...]
+src/
+├── components/
+├── lib/
+└── hooks/
+```
+
+## Skills priorizadas
+
+- `react-native-architecture`
+- `react-native-design`
+- `mobile-android-design`
+- `mobile-ios-design`
+- `responsive-design`
+- `accessibility-compliance`

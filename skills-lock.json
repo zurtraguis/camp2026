@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "skills": {
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
+    },
+    "claude-code-plugin-release": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "0a3cd0e9f4eab1ee15d3c95a8352e8be8f599bd8ba302e146645637098787fe4"
+    },
+    "context-mode": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "f3870052f510d416984aa64e4675a2e2da437d6f0bfab73b439bfa57af0a754d"
+    },
+    "context-mode-ops": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "0d7c32d35adf4669b11acf6bc66d69ad419a0b7848f61a7472474019e1606447"
+    },
+    "context7-cli": {
+      "source": "upstash/context7",
+      "sourceType": "github",
+      "computedHash": "525bfb31161c3f8866920a28fb2d9a3003a23b449aa8619b1b1add0da2cc3300"
+    },
+    "context7-mcp": {
+      "source": "upstash/context7",
+      "sourceType": "github",
+      "computedHash": "a4b485790d6ab03a95110bbda5fe269210faa01c1c171b44412ddc77ecabd18b"
+    },
+    "ctx-doctor": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "ccdb54dde1ba540ce143a42cc90f9c363a49977c51b56fb2d8d2a20cfea66e54"
+    },
+    "ctx-insight": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "1913c21de9d15ebf226eb82e89a7536a77ca96e8cc4f449c3077ce94d6a76f5c"
+    },
+    "ctx-purge": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "b6d10f48787bbe8f1f58e039eedd0a808b0d962e10a035af5a6aecd3175cef07"
+    },
+    "ctx-stats": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "688761c1b6590738855da468c51acd855f19dd686fcd9f14c0e83cc89aaf6008"
+    },
+    "ctx-upgrade": {
+      "source": "mksglu/claude-context-mode",
+      "sourceType": "github",
+      "computedHash": "2113c6b0d6dbf0efbac1a611a4bd142be7ca9b3f1431bd5d065806525bd9bcce"
+    },
+    "dispatching-parallel-agents": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "e21044ae7496fc285f1df9ff3fb518a3a20bea6f5216c1f59f4987e12c769a0a"
+    },
+    "do": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "ac80a2338872768e8d9e24bcad9d7a379019afa062167a20b525c4562405a2a3"
+    },
+    "executing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "2f709d1a2c7564f8ce6a9bb707e7f5451117ba80f8e8e2302662c29bc61246a6"
+    },
+    "find-docs": {
+      "source": "upstash/context7",
+      "sourceType": "github",
+      "computedHash": "a977bd7ad9159d251376c71357dd6243879fba19a75c8dcda2fc001ba5e25164"
+    },
+    "finishing-a-development-branch": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "9edba9a38684c060fdc38290f640e1dc0c37de286723ac9be73bacacf7cd6f3d"
+    },
+    "knowledge-agent": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "52a8f2c5351a0b73b3c55296c3dcd46ade6070f66f0d59ccd01832a9f77123f6"
+    },
+    "make-plan": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "434613fbce55feb87a0da0d8d863c7c83ce1e76de4acb7cac3cc513dee876616"
+    },
+    "mem-search": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "6058bee763732e6c85f77523e97ad27f476e73ee44fbfdcf105a218ef1dd52e0"
+    },
+    "pathfinder": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "96bf2edcbffd36a3119d4dea942561b02ecf355cc872d73cf21cc346092e3db2"
+    },
+    "receiving-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "2760c85d4f4117b0006e7ba755f4bbd61f8f4c185f347999763c97f507274e30"
+    },
+    "requesting-code-review": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "246e65cd72a7e360987d94e6c61564ce6d71c6361d1784d529d70e4cbbe8522d"
+    },
+    "smart-explore": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "624fc0e9b63e6e6176f5132eaba4bb4f05fe66fb998bbccc0272eff4e70e36e9"
+    },
+    "subagent-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "a197f8e5fba5ea59013e1adbaa90dd42db35de8f074feca200c8038de584a83b"
+    },
+    "systematic-debugging": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
+    },
+    "test-driven-development": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "126f1ebf6ccd414f42544f6e83d8cc5adb089e1108eaffb7c400701e37eecd9f"
+    },
+    "timeline-report": {
+      "source": "thedotmack/claude-mem",
+      "sourceType": "github",
+      "computedHash": "b2194d39219a5baa62b5f9373b1cc04b8020ddebed8496d2eb7da9a729fbc99c"
+    },
+    "using-git-worktrees": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "52bbb4b6e80918e83e92a1514f3b3757712154c2a8a42de24919e48a794c54fc"
+    },
+    "using-superpowers": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "e0eced9fbb205c212f420aded0c6f2bf5d5f059254679a8459b4fe72390160be"
+    },
+    "verification-before-completion": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "9b446f0c7fe1cfb560b1d34439523b1a76d5f177290007b2c053a1c749a4a8ba"
+    },
+    "writing-plans": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "bfaed11054ad8021c66860244e2d2e0d1eca483ae9f5fbfcb956e99c61f5c3d7"
+    },
+    "writing-skills": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "c0a92e629e39ea91b1f54da67a6aa92723008a8ef5b500c6de078f55485937c7"
+    }
+  }
+}

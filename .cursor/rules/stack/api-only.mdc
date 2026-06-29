@@ -1,0 +1,41 @@
+---
+description: Stack api-only — Hono/Fastify, sem frontend, OpenAPI obrigatório.
+alwaysApply: false
+appliesWhen: "HARNESS_STACK=api-only"
+---
+
+# Stack: api-only
+
+## Princípios
+
+- TypeScript strict; Zod nas bordas (request/response).
+- Sem JSX/React. Não criar `src/app/`, `src/components/` (frontend).
+- OpenAPI gerada por `/openapi-spec-generation` é gate obrigatório antes de `/release`.
+- Logging estruturado JSON; `correlation-id` propagado em todos os handlers.
+- Errors padronizados via `error-handling-patterns`.
+- 404/405/500 retornam Content-Type `application/problem+json` (RFC 7807).
+
+## Regras de qualidade
+
+- Lighthouse CI **não se aplica**.
+- Cobertura mínima: 80% de funções, 90% nos handlers públicos.
+- Gates de release: typecheck, lint, vitest, contract tests (Pact ou PrismJSON-Schema), security audit.
+
+## Layout esperado
+
+```
+src/
+├── index.ts             # bootstrap
+├── routes/              # handlers HTTP
+├── lib/                 # utilitários (logger, db, auth)
+└── domain/              # regras de negócio
+```
+
+## Skills priorizadas
+
+- `nodejs-backend-patterns`
+- `api-design-principles`
+- `openapi-spec-generation`
+- `auth-implementation-patterns`
+- `secrets-management`
+- `prometheus-configuration`

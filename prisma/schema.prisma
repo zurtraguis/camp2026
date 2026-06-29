@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: URLs ficam em prisma.config.ts (DATABASE_URL runtime, DIRECT_URL migrations).
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth (reaproveitado pela DAL existente) — usado pelo painel admin.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  STAFF // futura: equipe de saúde/pastoral com acesso à triagem
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(STAFF)
+  passwordHash  String? // PBKDF2 (Web Crypto) — Workers-safe, sem dependência nativa
+  isDemo        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  // Auditoria: pagamentos Pix revisados por este admin.
+  reviewedPayments Payment[] @relation("PaymentReviewer")
+
+  @@index([isDemo])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Idempotência de webhooks Stripe: o id é o event.id (evt_...).
+model StripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+
+  @@index([type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domínio — Acampamento RAIZ 2026
+// ─────────────────────────────────────────────────────────────────────────────
+
+// As 4 tribos reveladas no sábado (Gálatas 5.22-23).
+enum Tribo {
+  AGAPE // amor
+  EIRENE // paz
+  PISTIS // fidelidade
+  CHARA // alegria
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT // inscrição criada, aguardando pagamento
+  AWAITING_REVIEW // Pix com comprovante enviado, aguardando admin
+  CONFIRMED // pago/confirmado
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CARD // Stripe Checkout
+  PIX // manual (chave + comprovante)
+}
+
+enum PaymentStatus {
+  PENDING // criado, sem pagamento
+  AWAITING_REVIEW // comprovante Pix enviado
+  CONFIRMED
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+// Lotes de inscrição: o preço vigente é o do lote ativo com vagas.
+model Lote {
+  id         String   @id @default(cuid())
+  name       String // "1º Lote"
+  order      Int      @unique // 1, 2, 3
+  priceCents Int // 30000, 40000, 45000
+  capacity   Int // nº de vagas neste lote
+  active     Boolean  @default(true)
+  startsAt   DateTime?
+  endsAt     DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  registrations Registration[]
+
+  @@index([order])
+}
+
+model Registration {
+  id        String @id @default(cuid())
+  // Identificador curto e legível para o txid do Pix e para o campista.
+  publicCode String @unique
+
+  // Dados do campista
+  fullName  String
+  birthDate DateTime
+  gender    Gender
+  ageAtCamp Int // snapshot calculado na inscrição — usado no balanceamento
+  cpf       String? // opcional
+  phone     String?
+  email     String?
+  shirtSize String?
+  church    String?
+  city      String?
+
+  // Tribo atribuída no momento da inscrição (balanceamento estratificado)
+  tribo Tribo
+
+  status RegistrationStatus @default(PENDING_PAYMENT)
+  isDemo Boolean            @default(false)
+
+  loteId String
+  lote   Lote   @relation(fields: [loteId], references: [id])
+
+  guardian Guardian?
+  health   HealthProfile?
+  consent  ConsentRecord?
+  payment  Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tribo])
+  @@index([status])
+  @@index([gender, ageAtCamp])
+  @@index([isDemo])
+}
+
+// Responsável legal — autorização do menor.
+model Guardian {
+  id             String @id @default(cuid())
+  registrationId String @unique
+
+  name         String
+  cpf          String // documento do responsável
+  phone        String
+  email        String?
+  relationship String // pai, mãe, responsável legal
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+// Dados sensíveis (LGPD art. 11) — acesso restrito a ADMIN/STAFF.
+// Mantido em tabela separada para nunca vazar em exports gerais.
+model HealthProfile {
+  id             String @id @default(cuid())
+  registrationId String @unique
+
+  allergies           String?
+  medications         String?
+  dietaryRestrictions String?
+  chronicConditions   String?
+  healthNotes         String?
+
+  // Triagem confidencial (manual seção 10): cada flag gera um líder-âncora.
+  triageFlags String[] // luto, ansiedade_depressao, situacao_familiar, neurodivergencia, primeira_vez
+  triageNotes String?
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+// Registro de consentimento versionado (LGPD art. 14) — quem, quando, IP, versão.
+model ConsentRecord {
+  id             String @id @default(cuid())
+  registrationId String @unique
+
+  guardianName String
+  guardianCpf  String
+
+  // Consentimentos específicos e separados (LGPD: consentimento específico).
+  consentData       Boolean // tratamento de dados pessoais
+  consentHealth     Boolean // dados sensíveis de saúde (art. 11)
+  consentImage      Boolean // uso de imagem/foto/vídeo
+  consentActivities Boolean // participação em atividades + atendimento médico de emergência
+
+  termVersion String // ex.: "v1-2026-06"
+  ip          String?
+  userAgent   String?
+  consentedAt DateTime @default(now())
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id             String @id @default(cuid())
+  registrationId String @unique
+
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amountCents Int
+  loteOrder   Int // lote vigente no momento do pagamento (auditoria)
+
+  // Stripe (cartão)
+  stripeSessionId       String? @unique
+  stripePaymentIntentId String?
+
+  // Pix manual
+  pixTxid        String? // referência = publicCode
+  pixReceiptPath String? // caminho no bucket privado do Supabase Storage
+  reviewedById   String?
+  reviewedBy     User?     @relation("PaymentReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([method, status])
+}

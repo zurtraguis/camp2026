@@ -1,0 +1,21 @@
+{
+  "id": "api-only",
+  "name": "API only (Fastify + Zod + Prisma)",
+  "status": "beta",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "zod": "^4.0.0",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5",
+    "@types/node": "^20"
+  },
+  "scaffold_root": "scaffold"
+}

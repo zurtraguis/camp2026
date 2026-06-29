@@ -1,0 +1,23 @@
+{
+  "id": "cli",
+  "name": "CLI (Commander.js + Zod)",
+  "status": "beta",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "bin": {
+    "harness-cli-app": "./dist/index.js"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5",
+    "@types/node": "^20"
+  },
+  "scaffold_root": "scaffold"
+}

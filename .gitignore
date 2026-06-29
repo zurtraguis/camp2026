@@ -1,0 +1,29 @@
+node_modules
+# Keep environment variables out of version control
+.env
+.env.*
+!.env.example
+
+/src/generated/prisma
+
+# Build artifacts
+.next/
+.open-next/
+.wrangler/
+.dev.vars
+dist/
+out/
+coverage/
+test-results/
+playwright-report/
+tsconfig.tsbuildinfo
+*.log
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Harness telemetry (local, privacy by default — opt-in remote via HARNESS_TELEMETRY_URL)
+.harness/events.jsonl
+.harness/events-*.jsonl.gz
+.harness/cache/

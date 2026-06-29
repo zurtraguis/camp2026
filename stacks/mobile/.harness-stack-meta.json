@@ -1,0 +1,25 @@
+{
+  "id": "mobile",
+  "name": "Mobile (Expo SDK 51 + expo-router + Zustand)",
+  "status": "beta",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "~51.0.0",
+    "expo-router": "~3.5.0",
+    "expo-status-bar": "~1.12.0",
+    "react": "18.2.0",
+    "react-native": "0.74.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~18.2.0",
+    "typescript": "^5"
+  },
+  "scaffold_root": "scaffold"
+}

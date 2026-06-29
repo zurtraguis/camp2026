@@ -1,0 +1,31 @@
+---
+description: Stack selection (HARNESS_STACK var) com fallback para nextjs.
+alwaysApply: true
+priority: high
+---
+
+# Stack Selection
+
+O harness suporta 4 stacks: `nextjs` (default, raiz do repo), `api-only`, `mobile`, `cli`.
+
+## Resolução
+
+1. Lê `HARNESS_STACK` do `.env` ou ambiente.
+2. Se ausente ou inválido, assume `nextjs`.
+3. Stack ativo determina:
+   - Quais regras `stack/*.mdc` se aplicam.
+   - Quais comandos `safe-commands.sh` bloqueia.
+   - Quais skills são priorizadas em `docs/S03_SKILLS_INDEX.md`.
+
+## Mapa stack → arquivos relevantes
+
+| Stack | Regras stack | STACK.md | Comandos perigosos |
+| --- | --- | --- | --- |
+| `nextjs` | `stack/nextjs.mdc` `stack/database.mdc` `stack/tailwind.mdc` `stack/framer-motion.mdc` | `stacks/nextjs/STACK.md` | `db:demo:wipe@prod`, `prisma migrate reset` |
+| `api-only` | `stack/api-only.mdc` `stack/database.mdc` | `stacks/api-only/STACK.md` | `prisma migrate reset`, `rm -rf src/` |
+| `mobile` | `stack/mobile-rn.mdc` | `stacks/mobile/STACK.md` | `eas build --auto-submit`, `rm -rf ios/ android/` |
+| `cli` | `stack/cli-node.mdc` | `stacks/cli/STACK.md` | `npm publish` sem RR GO |
+
+## Trocar de stack
+
+Use `/init-stack <id>`. Não altere arquivos manualmente — o comando garante consistência (deps, ADR, hooks, doc).

@@ -1,0 +1,48 @@
+---
+description: Stack cli — Node.js + TypeScript + tsup, distribuído via npm.
+alwaysApply: false
+appliesWhen: "HARNESS_STACK=cli"
+---
+
+# Stack: cli (Node.js + TypeScript)
+
+## Princípios
+
+- Entrypoint em `src/cli.ts` com shebang `#!/usr/bin/env node`.
+- Subcomandos em `src/commands/<nome>.ts`.
+- Parsing: `commander` ou `yargs`. Validação de input: Zod.
+- Output: respeitar `--json`, `--quiet`, `--verbose`. Códigos de saída convencionais (0 OK, 1 erro genérico, 2 misuse).
+- Sem dependência de browser/DOM/React.
+
+## Regras de qualidade
+
+- Lighthouse CI **não se aplica**.
+- Smoke test obrigatório: `node dist/cli.js --help` e `--version` em CI.
+- Cobertura mínima: 80% (commands + lib).
+- Cenários BATS para fluxo end-to-end (entrada terminal, saída terminal).
+
+## Empacotamento
+
+- `tsup` com `--format cjs,esm` e `--dts`.
+- `package.json`:
+  - `"bin": { "<nome>": "dist/cli.js" }`
+  - `"engines": { "node": ">=20" }`
+  - `"files": ["dist", "README.md", "LICENSE"]`
+
+## Layout esperado
+
+```
+src/
+├── cli.ts              # entrypoint
+├── commands/           # subcomandos
+├── lib/                # utilitários (logger, fs, exec)
+└── schemas/            # Zod schemas
+```
+
+## Skills priorizadas
+
+- `nodejs-backend-patterns`
+- `bash-defensive-patterns`
+- `bats-testing-patterns`
+- `error-handling-patterns`
+- `changelog-automation`

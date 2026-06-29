@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "Harness Mobile",
+    "slug": "harness-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "harness-mobile",
+    "platforms": ["ios", "android", "web"],
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}

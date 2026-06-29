@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design System — RAIZ 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* tokens reais — espelho de src/app/globals.css */
+    --creme:#f1ede2; --verde-folha:#a8b92b; --verde-limao:#c8ff50; --amarelo-sol:#ffd533;
+    --marrom-raiz:#4b3a2a; --preto-raiz:#0b0b0a; --preto-2:#15140f;
+    --background:var(--preto-raiz); --foreground:var(--creme);
+    --surface:#1a1813; --surface-2:#221f18; --border:#38332a; --muted:#b7b0a0;
+    --accent:var(--verde-limao); --accent-foreground:#0b0b0a; --ring:var(--verde-limao);
+    --danger:#ff6b5e; --success:var(--verde-limao);
+    /* adições do design system v2 */
+    --info:#7fb2ff;
+    --dur-fast:120ms; --dur:180ms; --dur-slow:280ms; --ease:cubic-bezier(.2,.7,.2,1);
+    --r-sm:6px; --r-md:8px; --r-lg:12px; --r-2xl:16px; --r-full:999px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:0 8px 24px rgba(0,0,0,.5);
+    --shadow-glow:0 0 0 1px var(--verde-limao), 0 0 24px rgba(200,255,80,.25);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Inter",system-ui,sans-serif;background:var(--background);color:var(--foreground);
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(60% 50% at 50% 0%, rgba(168,185,43,.07), transparent 70%),
+      radial-gradient(40% 30% at 100% 100%, rgba(255,213,51,.05), transparent 70%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px 100px}
+  .display{font-family:"Anton",sans-serif;text-transform:uppercase;letter-spacing:.01em;font-weight:400;line-height:.98}
+  .cond{font-family:"Oswald",sans-serif}
+  code,.mono{font-family:ui-monospace,"Cascadia Code",monospace}
+
+  /* cover */
+  .cover{position:relative;padding:88px 28px 72px;text-align:center;border-bottom:1px solid var(--border);overflow:hidden}
+  .cover .kicker{color:var(--verde-limao);font-family:"Oswald";text-transform:uppercase;letter-spacing:.35em;font-size:13px;font-weight:600}
+  .cover h1{font-family:"Anton",sans-serif;text-transform:uppercase;font-size:clamp(40px,8vw,104px);letter-spacing:.01em;line-height:.92;margin:18px 0 14px;color:var(--creme)}
+  .cover h1 .lim{color:var(--verde-limao)}
+  .cover p{color:var(--muted);max-width:620px;margin:0 auto;font-size:17px}
+  .cover .roots{position:absolute;left:0;right:0;bottom:-2px;height:60px;opacity:.5}
+
+  /* section scaffold */
+  section{margin-top:72px;scroll-margin-top:24px}
+  .kick{display:inline-flex;align-items:center;gap:8px;color:var(--verde-limao);font-family:"Oswald";text-transform:uppercase;letter-spacing:.25em;font-size:12px;font-weight:600}
+  .kick::before{content:"";width:18px;height:2px;background:var(--verde-limao);display:inline-block}
+  h2.sec{font-family:"Anton",sans-serif;text-transform:uppercase;font-size:clamp(26px,4vw,40px);letter-spacing:.01em;margin:10px 0 6px;color:var(--creme)}
+  .sec-sub{color:var(--muted);font-size:15px;max-width:760px;margin-bottom:26px}
+  .glabel{color:var(--muted);font-family:"Oswald";text-transform:uppercase;letter-spacing:.18em;font-size:12px;font-weight:600;margin:26px 0 12px}
+
+  .grid{display:grid;gap:14px}
+  .card{background:rgba(26,24,19,.8);border:1px solid var(--border);border-radius:var(--r-2xl);padding:22px;backdrop-filter:blur(6px)}
+
+  /* swatches */
+  .swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+  .sw{border-radius:var(--r-lg);padding:16px 14px;min-height:118px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(255,255,255,.06)}
+  .sw b{font-family:"Oswald";font-weight:600;font-size:15px}
+  .sw .hex{font-size:12px;opacity:.85}
+  .sw .ratio{margin-top:6px;font-size:10.5px;font-weight:600;letter-spacing:.04em;opacity:.8;text-transform:uppercase}
+  .scale{display:flex;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--border)}
+  .scale span{flex:1;height:56px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:10px;font-weight:600;color:#0b0b0a}
+
+  /* type */
+  .type-row{display:grid;grid-template-columns:190px 1fr;gap:22px;align-items:baseline;padding:16px 0;border-bottom:1px solid var(--border)}
+  .type-row .meta{color:var(--muted);font-size:12px;font-family:"Oswald";text-transform:uppercase;letter-spacing:.08em}
+  .type-row .meta b{display:block;color:var(--creme);font-size:13px;letter-spacing:.12em}
+
+  /* chips/tokens */
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-md);min-width:84px;height:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .chip b{font-family:"Oswald";color:var(--verde-limao);font-size:15px}
+  .chip small{color:var(--muted);font-size:12px}
+  .swatch-box{width:84px;height:84px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface-2);display:flex;align-items:center;justify-content:center}
+
+  /* buttons (real component) */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:var(--r-md);
+    font-family:"Oswald";font-weight:600;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;
+    height:44px;padding:0 20px;font-size:14px;transition:transform var(--dur-fast) var(--ease),background var(--dur) var(--ease),opacity var(--dur) var(--ease)}
+  .btn:active{transform:scale(.97)}
+  .btn-primary{background:var(--verde-limao);color:#0b0b0a}
+  .btn-primary:hover{background:#d4ff6a}
+  .btn-secondary{background:var(--surface);color:var(--creme);border:1px solid var(--border)}
+  .btn-secondary:hover{background:var(--surface-2)}
+  .btn-ghost{background:transparent;color:var(--creme)}
+  .btn-ghost:hover{background:var(--surface)}
+  .btn-danger{background:var(--danger);color:#0b0b0a}
+  .btn-disabled{background:var(--verde-limao);color:#0b0b0a;opacity:.4;cursor:not-allowed}
+  .btn-sm{height:40px;padding:0 14px;font-size:13px}
+  .btn-lg{height:52px;padding:0 28px;font-size:16px}
+  .btn:focus-visible{outline:2px solid var(--verde-limao);outline-offset:2px}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .spinner{width:15px;height:15px;border:2px solid rgba(11,11,10,.35);border-top-color:#0b0b0a;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* inputs */
+  .ctrl{width:100%;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface-2);
+    padding:11px 13px;color:var(--creme);font:15px "Inter";transition:border var(--dur) var(--ease)}
+  .ctrl::placeholder{color:rgba(183,176,160,.6)}
+  .ctrl:focus{outline:none;border-color:var(--verde-limao);box-shadow:0 0 0 3px rgba(200,255,80,.25)}
+  .ctrl.is-error{border-color:var(--danger)}
+  .ctrl:disabled{opacity:.4;cursor:not-allowed;background:var(--preto-2)}
+  .lbl{display:block;font-size:13px;font-weight:500;color:var(--creme);margin-bottom:6px}
+  .lbl .req{color:var(--verde-limao);margin-left:3px}
+  .hint{font-size:12px;color:var(--muted);margin-top:5px}
+  .err{font-size:12px;color:var(--danger);margin-top:5px;font-weight:500;display:flex;gap:5px;align-items:center}
+  .field{margin-bottom:16px}
+
+  .check{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:rgba(241,237,226,.9);cursor:pointer}
+  .check input{margin-top:2px;width:20px;height:20px;accent-color:var(--verde-limao);flex:none}
+
+  /* callouts */
+  .callout{border:1px solid;border-left-width:4px;border-radius:var(--r-lg);padding:14px 16px;font-size:14px;display:flex;gap:10px}
+  .callout .ic{flex:none;font-weight:700}
+  .callout b{display:block;margin-bottom:2px}
+  .c-info{border-color:var(--border);background:var(--surface);color:var(--creme)}
+  .c-info .ic{color:var(--info)}
+  .c-success{border-color:rgba(200,255,80,.4);background:rgba(200,255,80,.1);color:var(--creme)}
+  .c-success .ic{color:var(--verde-limao)}
+  .c-warning{border-color:rgba(255,213,51,.4);background:rgba(255,213,51,.1);color:var(--creme)}
+  .c-warning .ic{color:var(--amarelo-sol)}
+  .c-danger{border-color:rgba(255,107,94,.4);background:rgba(255,107,94,.1);color:var(--creme)}
+  .c-danger .ic{color:var(--danger)}
+
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:var(--r-full);padding:4px 12px;
+    font-family:"Oswald";text-transform:uppercase;letter-spacing:.06em;font-size:12px;font-weight:600}
+  .badge-neutral{background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
+  .tribo{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;border-radius:var(--r-lg);padding:12px 16px;min-width:150px}
+  .tribo b{font-family:"Anton";text-transform:uppercase;letter-spacing:.02em;font-size:20px;line-height:1}
+  .tribo small{font-size:11px;opacity:.85;font-weight:600}
+
+  /* lote cards */
+  .lotes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .lote{position:relative;border:1px solid var(--border);border-radius:var(--r-2xl);padding:22px;background:rgba(26,24,19,.8)}
+  .lote.atual{border-color:var(--verde-limao);box-shadow:0 0 24px rgba(200,255,80,.12)}
+  .lote.esgotado{opacity:.55}
+  .lote .tag{position:absolute;top:-11px;left:18px;font-family:"Oswald";text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-full)}
+  .lote .tag.on{background:var(--verde-limao);color:#0b0b0a}
+  .lote .tag.off{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+  .lote .nm{font-family:"Oswald";text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-size:13px;font-weight:600}
+  .lote .price{font-family:"Anton";font-size:46px;color:var(--creme);line-height:1;margin:6px 0 2px}
+  .lote .price .cur{font-size:22px;color:var(--muted);vertical-align:super;margin-right:2px}
+  .lote .meta{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .lote .btn{width:100%}
+
+  /* payment select */
+  .paysel{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .pm{border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;display:flex;gap:10px;align-items:center;cursor:pointer}
+  .pm.sel{border-color:var(--verde-limao);background:rgba(200,255,80,.06)}
+  .pm .dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex:none}
+  .pm.sel .dot{border-color:var(--verde-limao);box-shadow:inset 0 0 0 3px var(--verde-limao)}
+  .pm .pmt{font-family:"Oswald";text-transform:uppercase;letter-spacing:.04em;font-weight:600;font-size:14px}
+  .pm .pmd{font-size:12px;color:var(--muted)}
+  .qr{width:96px;height:96px;border-radius:var(--r-md);background:
+    repeating-conic-gradient(#0b0b0a 0 25%, #f1ede2 0 50%) 0/16px 16px;border:1px solid var(--border)}
+
+  /* progress */
+  .steps{display:flex;align-items:center;gap:0}
+  .step{display:flex;align-items:center;gap:10px}
+  .step .n{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"Oswald";font-weight:700;font-size:14px}
+  .step.done .n,.step.cur .n{background:var(--verde-limao);color:#0b0b0a}
+  .step.todo .n{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+  .step .t{font-family:"Oswald";text-transform:uppercase;letter-spacing:.06em;font-size:12px;font-weight:600}
+  .step.todo .t{color:var(--muted)}
+  .bar{flex:1;height:2px;background:var(--border);margin:0 12px;min-width:24px}
+  .bar.on{background:var(--verde-limao)}
+
+  /* status */
+  .status{display:inline-flex;align-items:center;gap:7px;border:1px solid;border-radius:var(--r-full);padding:5px 12px;font-size:13px;font-weight:500}
+  .st-dot{width:8px;height:8px;border-radius:50%}
+  .s-pend{border-color:rgba(255,213,51,.35);background:rgba(255,213,51,.1);color:var(--amarelo-sol)}
+  .s-rev{border-color:rgba(127,178,255,.35);background:rgba(127,178,255,.1);color:var(--info)}
+  .s-conf{border-color:rgba(200,255,80,.35);background:rgba(200,255,80,.1);color:var(--verde-limao)}
+  .s-canc{border-color:rgba(255,107,94,.35);background:rgba(255,107,94,.1);color:var(--danger)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{font-family:"Oswald";text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--muted);font-weight:600}
+  td .mono{font-size:12.5px;color:var(--verde-limao)}
+  .pass{color:var(--verde-limao);font-weight:600}
+  .warn{color:var(--amarelo-sol);font-weight:600}
+
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .do b,.dont b{font-family:"Oswald";text-transform:uppercase;letter-spacing:.08em;font-size:12px}
+  .do b{color:var(--verde-limao)} .dont b{color:var(--danger)}
+  ul.clean{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+  ul.clean li{font-size:13.5px;color:rgba(241,237,226,.9);padding-left:20px;position:relative}
+  .do ul.clean li::before{content:"✓";position:absolute;left:0;color:var(--verde-limao);font-weight:700}
+  .dont ul.clean li::before{content:"✕";position:absolute;left:0;color:var(--danger);font-weight:700}
+
+  pre{background:var(--preto-2);border:1px solid var(--border);color:#dfe9c8;border-radius:var(--r-lg);padding:20px;overflow:auto;font:12.5px/1.7 ui-monospace,"Cascadia Code",monospace}
+  .principles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+  .pr{border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;background:var(--surface)}
+  .pr b{font-family:"Oswald";text-transform:uppercase;letter-spacing:.06em;color:var(--verde-limao);font-size:14px;display:block;margin-bottom:6px}
+  .pr p{font-size:13px;color:var(--muted)}
+  .mc-tag{font-family:"Oswald";text-transform:uppercase;font-size:10.5px;letter-spacing:.08em;color:var(--muted)}
+  .footer{margin-top:80px;border-top:1px solid var(--border);padding-top:22px;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  @media(max-width:680px){.type-row{grid-template-columns:1fr}.two,.paysel{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <div class="kicker">Acampamento RAIZ 2026 · Design System</div>
+  <h1>Todo fruto<br>revela uma <span class="lim">raiz</span></h1>
+  <p>Sistema de design do site de inscrição — acampamento cristão de adolescentes (12–19 anos), 4 tribos de Gálatas 5.22-23. Tema terroso, escuro, de alto contraste.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- MARCA -->
+  <section id="marca">
+    <span class="kick">01 · Marca</span>
+    <h2 class="sec">Conceito &amp; voz</h2>
+    <p class="sec-sub">RAIZ é onde a fé deixa de ser herança e vira escolha. Em três dias de terra, silêncio e comunidade, algo planta raiz dentro de você — e todo fruto revela uma raiz.</p>
+    <div class="principles">
+      <div class="pr"><b>Terroso e real</b><p>A linguagem vem do chão, não do céu. Nada de frases de cartão. Fala como quem senta ao redor de uma fogueira — direto, honesto, com peso.</p></div>
+      <div class="pr"><b>Sagrado sem ser chato</b><p>A fé é central, mas não é decoração. Cada palavra carrega intenção bíblica sem soar como discurso de culto.</p></div>
+      <div class="pr"><b>Jovem sem ser infantil</b><p>O público tem 12–19 anos e detecta falsidade em milissegundos. Respeito de adulto, afeto de comunidade.</p></div>
+      <div class="pr"><b>Energia com raiz</b><p>Verde-limão sobre preto-raiz é tensão viva. Urgência real (lotes esgotam), sem pressão manipuladora.</p></div>
+      <div class="pr"><b>Ação concreta</b><p>Cada CTA nomeia o que acontece. Cada erro diz o que fazer a seguir. Nenhuma palavra preenche espaço.</p></div>
+    </div>
+
+    <div class="two" style="margin-top:22px">
+      <div class="card do">
+        <b>Voz — faça</b>
+        <ul class="clean">
+          <li>Imperativo afirmativo: “Escolha sua tribo”, “Confirme sua vaga”.</li>
+          <li>Ancore na metáfora da raiz: “sua vaga está garantida”, “plante sua inscrição”.</li>
+          <li>Nomeie pela ação, não pelo status: “você está quase lá”.</li>
+          <li>Números reais: “R$ 300 — 1º lote”, não “valor promocional”.</li>
+        </ul>
+      </div>
+      <div class="card dont">
+        <b>Voz — evite</b>
+        <ul class="clean">
+          <li>“Oops!” ou anglicismos desnecessários em erros.</li>
+          <li>Exclamação em excesso — reserve para a confirmação da inscrição.</li>
+          <li>Voz passiva em CTA: nada de “seja inscrito”.</li>
+          <li>Vocabulário eclesiástico genérico fora de contexto.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- CORES -->
+  <section id="cores">
+    <span class="kick">02 · Cores</span>
+    <h2 class="sec">Paleta</h2>
+    <p class="sec-sub">Verde-limão é a cor-herói: faz quatro trabalhos (foco, sucesso, botão primário e tribo Ágape) sem ambiguidade. Razões de contraste WCAG calculadas sobre o fundo preto-raiz.</p>
+
+    <div class="glabel">Base &amp; superfícies</div>
+    <div class="swatches">
+      <div class="sw" style="background:#0b0b0a;color:#f1ede2"><b>preto-raiz</b><span class="hex">#0b0b0a · background</span></div>
+      <div class="sw" style="background:#15140f;color:#f1ede2"><b>preto-2</b><span class="hex">#15140f</span></div>
+      <div class="sw" style="background:#1a1813;color:#f1ede2"><b>surface</b><span class="hex">#1a1813</span></div>
+      <div class="sw" style="background:#221f18;color:#f1ede2"><b>surface-2</b><span class="hex">#221f18</span></div>
+      <div class="sw" style="background:#38332a;color:#f1ede2"><b>border</b><span class="hex">#38332a</span></div>
+      <div class="sw" style="background:#f1ede2;color:#0b0b0a"><b>creme</b><span class="hex">#f1ede2 · texto</span><span class="ratio">16.8:1 AA</span></div>
+      <div class="sw" style="background:#b7b0a0;color:#0b0b0a"><b>muted</b><span class="hex">#b7b0a0 · texto 2º</span><span class="ratio">9.1:1 AA</span></div>
+    </div>
+
+    <div class="glabel">Marca</div>
+    <div class="swatches">
+      <div class="sw" style="background:#c8ff50;color:#0b0b0a"><b>verde-limão</b><span class="hex">#c8ff50 · hero</span><span class="ratio">16.8:1 AA</span></div>
+      <div class="sw" style="background:#a8b92b;color:#0b0b0a"><b>verde-folha</b><span class="hex">#a8b92b</span><span class="ratio">9.0:1 AA</span></div>
+      <div class="sw" style="background:#ffd533;color:#0b0b0a"><b>amarelo-sol</b><span class="hex">#ffd533</span><span class="ratio">13.9:1 AA</span></div>
+      <div class="sw" style="background:#4b3a2a;color:#f1ede2"><b>marrom-raiz</b><span class="hex">#4b3a2a</span></div>
+    </div>
+
+    <div class="glabel">Semânticas</div>
+    <div class="swatches">
+      <div class="sw" style="background:#c8ff50;color:#0b0b0a"><b>success</b><span class="hex">= verde-limão</span></div>
+      <div class="sw" style="background:#ffd533;color:#0b0b0a"><b>warning</b><span class="hex">= amarelo-sol</span></div>
+      <div class="sw" style="background:#ff6b5e;color:#0b0b0a"><b>danger</b><span class="hex">#ff6b5e</span><span class="ratio">7.0:1 AA</span></div>
+      <div class="sw" style="background:#7fb2ff;color:#0b0b0a"><b>info (novo)</b><span class="hex">#7fb2ff</span></div>
+    </div>
+
+    <div class="glabel">Escala verde-limão &amp; amarelo-sol (novo — para hover/tints)</div>
+    <div class="scale" style="margin-bottom:10px">
+      <span style="background:#eaffc0">100</span><span style="background:#d9ff85">300</span><span style="background:#c8ff50">500</span><span style="background:#a3d62f;color:#0b0b0a">700</span><span style="background:#6f9416;color:#f1ede2">900</span>
+    </div>
+    <div class="scale">
+      <span style="background:#fff0b8">100</span><span style="background:#ffe580">300</span><span style="background:#ffd533">500</span><span style="background:#d6ad17">700</span><span style="background:#8f7208;color:#f1ede2">900</span>
+    </div>
+  </section>
+
+  <!-- TIPOGRAFIA -->
+  <section id="tipografia">
+    <span class="kick">03 · Tipografia</span>
+    <h2 class="sec">Tipografia</h2>
+    <p class="sec-sub">Três papéis claros: <b style="color:var(--creme)">Anton</b> proclama (display, caixa-alta), <b style="color:var(--creme)">Oswald</b> orienta (botões e labels, condensada), <b style="color:var(--creme)">Inter</b> informa (corpo).</p>
+    <div class="type-row"><div class="meta"><b>Display</b>Anton · 88 · caixa-alta</div><div class="display" style="font-size:54px;color:var(--creme)">Escolha sua tribo</div></div>
+    <div class="type-row"><div class="meta"><b>H2 seção</b>Anton · 40 · caixa-alta</div><div class="display" style="font-size:36px;color:var(--creme)">1º Lote — R$300</div></div>
+    <div class="type-row"><div class="meta"><b>Label / botão</b>Oswald · 14 · 600 · uppercase</div><div class="cond" style="font-size:16px;text-transform:uppercase;letter-spacing:.05em;color:var(--verde-limao);font-weight:600">Garantir vaga por R$ 300</div></div>
+    <div class="type-row"><div class="meta"><b>Body</b>Inter · 16 · 400</div><div style="font-size:16px;color:var(--creme)">Em três dias de terra, silêncio e comunidade, algo planta raiz dentro de você.</div></div>
+    <div class="type-row"><div class="meta"><b>Caption</b>Inter · 12 · muted</div><div style="font-size:12px;color:var(--muted)">Texto auxiliar, dicas de campo e termos de LGPD.</div></div>
+  </section>
+
+  <!-- TOKENS -->
+  <section id="tokens">
+    <span class="kick">04 · Tokens</span>
+    <h2 class="sec">Tokens</h2>
+    <p class="sec-sub">Espaçamento, raio, elevação e — novidade do v2 — movimento. Foco sempre em verde-limão.</p>
+    <div class="glabel">Espaçamento · base 4px</div>
+    <div class="chips">
+      <div class="chip"><b>1</b><small>4px</small></div><div class="chip"><b>2</b><small>8px</small></div>
+      <div class="chip"><b>3</b><small>12px</small></div><div class="chip"><b>4</b><small>16px</small></div>
+      <div class="chip"><b>6</b><small>24px</small></div><div class="chip"><b>8</b><small>32px</small></div>
+      <div class="chip"><b>12</b><small>48px</small></div>
+    </div>
+    <div class="glabel">Raio</div>
+    <div class="chips">
+      <div class="swatch-box" style="border-radius:6px"><span class="cond" style="color:var(--verde-limao)">sm 6</span></div>
+      <div class="swatch-box" style="border-radius:8px"><span class="cond" style="color:var(--verde-limao)">md 8</span></div>
+      <div class="swatch-box" style="border-radius:12px"><span class="cond" style="color:var(--verde-limao)">lg 12</span></div>
+      <div class="swatch-box" style="border-radius:16px"><span class="cond" style="color:var(--verde-limao)">2xl 16</span></div>
+      <div class="swatch-box" style="border-radius:999px"><span class="cond" style="color:var(--verde-limao)">full</span></div>
+    </div>
+    <div class="glabel">Elevação &amp; movimento</div>
+    <div class="row" style="gap:16px">
+      <div class="card" style="box-shadow:var(--shadow-sm);padding:14px 18px"><span class="cond" style="color:var(--creme)">shadow-sm</span></div>
+      <div class="card" style="box-shadow:var(--shadow-md);padding:14px 18px"><span class="cond" style="color:var(--creme)">shadow-md</span></div>
+      <div class="card" style="box-shadow:var(--shadow-glow);padding:14px 18px"><span class="cond" style="color:var(--verde-limao)">glow (foco)</span></div>
+      <div class="card" style="padding:14px 18px"><span class="mono" style="color:var(--muted);font-size:12px">dur 120 / 180 / 280ms · ease (.2,.7,.2,1) · respeita prefers-reduced-motion</span></div>
+    </div>
+  </section>
+
+  <!-- COMPONENTES -->
+  <section id="componentes">
+    <span class="kick">05 · Componentes</span>
+    <h2 class="sec">Componentes</h2>
+    <p class="sec-sub">Os primitivos reais de <code style="color:var(--verde-limao)">src/components/ui</code>, com variantes e estados completos.</p>
+
+    <div class="glabel">Button — variantes</div>
+    <div class="row">
+      <button class="btn btn-primary">Quero me inscrever</button>
+      <button class="btn btn-secondary">Saiba mais</button>
+      <button class="btn btn-ghost">Voltar</button>
+      <button class="btn btn-danger">Cancelar inscrição</button>
+    </div>
+    <div class="glabel">Button — tamanhos &amp; estados</div>
+    <div class="row">
+      <button class="btn btn-primary btn-sm">sm · h40</button>
+      <button class="btn btn-primary">md · h44</button>
+      <button class="btn btn-primary btn-lg">lg · h52</button>
+      <button class="btn btn-disabled" disabled>disabled</button>
+      <button class="btn btn-primary"><span class="spinner"></span> Enviando…</button>
+    </div>
+
+    <div class="two" style="margin-top:26px">
+      <div>
+        <div class="glabel">Campos — Field / Input</div>
+        <div class="field">
+          <label class="lbl">Nome completo <span class="req">*</span></label>
+          <input class="ctrl" placeholder="Como você assina">
+          <p class="hint">Igual ao documento que você vai levar.</p>
+        </div>
+        <div class="field">
+          <label class="lbl">E-mail <span class="req">*</span></label>
+          <input class="ctrl is-error" value="email-invalido">
+          <p class="err">▲ CPF inválido. Confere os números e tenta de novo.</p>
+        </div>
+        <div class="field">
+          <label class="lbl">Tribo (atribuída)</label>
+          <input class="ctrl" value="Ágape" disabled>
+        </div>
+      </div>
+      <div>
+        <div class="glabel">Checkbox · LGPD</div>
+        <label class="check" style="margin-bottom:12px"><input type="checkbox" checked> Autorizo o tratamento dos meus dados (versão registrada com IP).</label>
+        <label class="check" style="margin-bottom:22px"><input type="checkbox"> Autorizo uso de imagem (opcional, consentimento separado).</label>
+
+        <div class="glabel">Callout · 4 tons</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div class="callout c-info"><span class="ic">i</span><div><b>Info</b>Sua vaga fica reservada por 30 min até o pagamento.</div></div>
+          <div class="callout c-success"><span class="ic">✓</span><div><b>Confirmado</b>Inscrição válida — sua tribo é Ágape.</div></div>
+          <div class="callout c-warning"><span class="ic">▲</span><div><b>Atenção</b>Último lote: restam 12 vagas.</div></div>
+          <div class="callout c-danger"><span class="ic">✕</span><div><b>Pagamento não aprovado</b>Seu banco recusou o cartão — tente outro.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glabel">Badge</div>
+    <div class="row">
+      <span class="badge badge-neutral">Neutro</span>
+      <span class="badge badge-neutral">12–19 anos</span>
+      <span class="badge" style="background:rgba(200,255,80,.12);color:var(--verde-limao);border:1px solid rgba(200,255,80,.4)">Vagas abertas</span>
+    </div>
+  </section>
+
+  <!-- PADRÕES -->
+  <section id="padroes">
+    <span class="kick">06 · Padrões de domínio</span>
+    <h2 class="sec">Padrões</h2>
+    <p class="sec-sub">Composições específicas do RAIZ: tribos, lotes, pagamento e progresso.</p>
+
+    <div class="glabel">Badge de tribo · Gálatas 5.22-23</div>
+    <div class="row">
+      <span class="tribo" style="background:#c8ff50;color:#0b0b0a"><b>Ágape</b><small>AMOR · 16.8:1</small></span>
+      <span class="tribo" style="background:#a8b92b;color:#0b0b0a"><b>Eirene</b><small>PAZ · 9.0:1</small></span>
+      <span class="tribo" style="background:#ffd533;color:#0b0b0a"><b>Pistis</b><small>FIDELIDADE · 13.9:1</small></span>
+      <span class="tribo" style="background:#9c6b2e;color:#f5f0e8"><b>Chara</b><small>ALEGRIA · ver a11y ▲</small></span>
+    </div>
+
+    <div class="glabel">Card de lote</div>
+    <div class="lotes">
+      <div class="lote esgotado"><span class="tag off">Esgotado</span><div class="nm">1º Lote</div><div class="price"><span class="cur">R$</span>300</div><div class="meta">80 vagas · 0 restantes</div><button class="btn btn-disabled" disabled>Esgotado</button></div>
+      <div class="lote atual"><span class="tag on">Aberto agora</span><div class="nm">2º Lote</div><div class="price"><span class="cur">R$</span>400</div><div class="meta">80 vagas · 32 restantes</div><button class="btn btn-primary">Garantir vaga por R$ 400</button></div>
+      <div class="lote"><span class="tag off">Em breve</span><div class="nm">3º Lote · último</div><div class="price"><span class="cur">R$</span>450</div><div class="meta">80 vagas</div><button class="btn btn-secondary" disabled>Ainda não liberado</button></div>
+    </div>
+
+    <div class="two" style="margin-top:26px">
+      <div>
+        <div class="glabel">Seletor de pagamento</div>
+        <div class="paysel">
+          <div class="pm sel"><span class="dot"></span><div><div class="pmt">Cartão</div><div class="pmd">Stripe · na hora</div></div></div>
+          <div class="pm"><span class="dot"></span><div><div class="pmt">Pix</div><div class="pmd">manual · comprovante</div></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="glabel">Painel Pix</div>
+        <div class="card" style="display:flex;gap:16px;align-items:center">
+          <div class="qr" aria-hidden="true"></div>
+          <div>
+            <div class="cond" style="text-transform:uppercase;letter-spacing:.06em;color:var(--verde-limao);font-weight:600;font-size:13px">Pix · R$ 400,00</div>
+            <p style="font-size:12.5px;color:var(--muted);margin:4px 0 8px">Escaneie e envie o comprovante (JPG, PNG ou PDF).</p>
+            <button class="btn btn-secondary btn-sm">Copiar código</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glabel">Barra de progresso multi-step</div>
+    <div class="steps">
+      <div class="step done"><span class="n">✓</span><span class="t">Dados</span></div><div class="bar on"></div>
+      <div class="step cur"><span class="n">2</span><span class="t">Tribo</span></div><div class="bar"></div>
+      <div class="step todo"><span class="n">3</span><span class="t">Pagamento</span></div>
+    </div>
+
+    <div class="glabel" style="margin-top:26px">Status de inscrição / pagamento</div>
+    <div class="row">
+      <span class="status s-pend"><span class="st-dot" style="background:var(--amarelo-sol)"></span>Aguardando pagamento</span>
+      <span class="status s-rev"><span class="st-dot" style="background:var(--info)"></span>Comprovante em revisão</span>
+      <span class="status s-conf"><span class="st-dot" style="background:var(--verde-limao)"></span>Confirmado</span>
+      <span class="status s-canc"><span class="st-dot" style="background:var(--danger)"></span>Cancelado</span>
+    </div>
+  </section>
+
+  <!-- VOZ / UX COPY -->
+  <section id="copy">
+    <span class="kick">07 · UX Copy</span>
+    <h2 class="sec">Microcopy</h2>
+    <p class="sec-sub">Mensagens prontas para o fluxo de inscrição — acolhe antes de corrigir, sempre diz o próximo passo.</p>
+    <div class="card">
+      <table>
+        <tr><th>Tipo</th><th>Contexto</th><th>Texto</th></tr>
+        <tr><td><span class="mc-tag">Erro</span></td><td>Campo obrigatório vazio</td><td>Preencha este campo para continuar.</td></tr>
+        <tr><td><span class="mc-tag">Erro</span></td><td>CPF inválido</td><td>CPF inválido. Confere os números e tenta de novo.</td></tr>
+        <tr><td><span class="mc-tag">Erro</span></td><td>Comprovante Pix formato errado</td><td>Formato não aceito. Envie uma imagem JPG, PNG ou PDF do comprovante.</td></tr>
+        <tr><td><span class="mc-tag">Erro</span></td><td>Cartão recusado</td><td>Pagamento não aprovado. Seu banco recusou o cartão — tente outro cartão ou fale com seu banco.</td></tr>
+        <tr><td><span class="mc-tag">Vazio</span></td><td>Admin sem inscrições</td><td>Nenhuma inscrição ainda. Quando os adolescentes começarem a garantir vaga, tudo aparece aqui.</td></tr>
+        <tr><td><span class="mc-tag">Vazio</span></td><td>Tribo não escolhida</td><td>Escolha sua tribo. Cada uma carrega um fruto de Gálatas 5 — qual é o seu?</td></tr>
+        <tr><td><span class="mc-tag">CTA</span></td><td>Lote 3 · último</td><td>Garantir minha vaga — último lote</td></tr>
+        <tr><td><span class="mc-tag">CTA</span></td><td>Avançar etapa</td><td>Avançar para o pagamento</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ACESSIBILIDADE -->
+  <section id="a11y">
+    <span class="kick">08 · Acessibilidade</span>
+    <h2 class="sec">Acessibilidade — WCAG 2.1 AA</h2>
+    <p class="sec-sub">Contraste calculado, foco sempre visível, nunca só cor. O anel de foco usa a própria cor da marca (verde-limão), então acessibilidade e identidade são a mesma decisão.</p>
+    <div class="card" style="margin-bottom:18px">
+      <table>
+        <tr><th>Par (texto / fundo)</th><th>Razão</th><th>AA normal</th><th>Uso</th></tr>
+        <tr><td><span class="mono">#f1ede2 / #0b0b0a</span></td><td>16.8:1</td><td class="pass">passa</td><td>texto principal</td></tr>
+        <tr><td><span class="mono">#c8ff50 / #0b0b0a</span></td><td>16.8:1</td><td class="pass">passa</td><td>hero / foco / sucesso</td></tr>
+        <tr><td><span class="mono">#ffd533 / #0b0b0a</span></td><td>13.9:1</td><td class="pass">passa</td><td>Tribo Pistis / warning</td></tr>
+        <tr><td><span class="mono">#b7b0a0 / #0b0b0a</span></td><td>9.1:1</td><td class="pass">passa</td><td>texto secundário</td></tr>
+        <tr><td><span class="mono">#a8b92b / #0b0b0a</span></td><td>9.0:1</td><td class="pass">passa</td><td>Tribo Eirene</td></tr>
+        <tr><td><span class="mono">#ff6b5e / #0b0b0a</span></td><td>7.0:1</td><td class="pass">passa</td><td>erro / danger</td></tr>
+        <tr><td><span class="mono">#0b0b0a / #c8ff50</span></td><td>16.8:1</td><td class="pass">passa</td><td>botão primário</td></tr>
+        <tr><td><span class="mono">#f5f0e8 / #9c6b2e</span></td><td>3.8:1</td><td class="warn">só texto grande/bold</td><td>Badge Chara — usar Oswald uppercase bold (≥14px) ou clarear fundo p/ #b07d3a</td></tr>
+      </table>
+    </div>
+    <div class="two">
+      <div class="card do"><b>Sempre</b><ul class="clean">
+        <li>Usar elementos nativos (&lt;button&gt;, &lt;input&gt;, &lt;label&gt;, &lt;fieldset&gt;).</li>
+        <li>Manter o anel de foco verde-limão 2px / offset 2px em tudo que é interativo.</li>
+        <li>Associar erro e dica ao campo via <span class="mono">aria-describedby</span>.</li>
+        <li>Dois sinais sempre: cor + ícone + texto (nunca só cor).</li>
+        <li>Respeitar <span class="mono">prefers-reduced-motion</span>.</li>
+      </ul></div>
+      <div class="card dont"><b>Nunca</b><ul class="clean">
+        <li>Sobrescrever <span class="mono">:focus-visible</span> com outline:none sem substituto.</li>
+        <li>Transmitir significado só por cor (tribo, status, callout).</li>
+        <li>Componente customizado sem o padrão ARIA completo.</li>
+        <li>Placeholder no lugar de label visível.</li>
+        <li>Alvo de toque menor que 40×40px (44 recomendado).</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- POR QUE MUDOU -->
+  <section id="critica">
+    <span class="kick">09 · Por que mudou</span>
+    <h2 class="sec">De “genérico” a marca · 28 → 87</h2>
+    <p class="sec-sub">Diagnóstico do design system anterior (inventado) versus este (ancorado no produto real).</p>
+    <div class="two">
+      <div class="card dont"><b>Por que parecia IA</b><ul class="clean">
+        <li>Paleta verde-floresta + terracota: o default que qualquer gerador dá a “acampamento cristão”.</li>
+        <li>Open Sans + Roboto Slab: o duo “parecer profissional” de tutorial — zero tensão.</li>
+        <li>Tema claro ignorava a metáfora: raiz vive no escuro produtivo.</li>
+        <li>Sem hierarquia de destaque — nada podia gritar; o CTA competia com títulos.</li>
+        <li>Tribos como tags neutras, sem vínculo com os frutos do Espírito.</li>
+      </ul></div>
+      <div class="card do"><b>Como este eleva</b><ul class="clean">
+        <li>Verde-limão #c8ff50 como cor-herói: foco, sucesso, botão e Ágape numa cor só.</li>
+        <li>Anton caixa-alta proclama; Oswald orienta; Inter informa — papéis claros.</li>
+        <li>Cor de tribo justificada pela teologia do fruto.</li>
+        <li>Dark como decisão conceitual (solo em camadas), não estética.</li>
+        <li>Acessibilidade costurada no token primário, não adicionada depois.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <!-- TOKENS DEV -->
+  <section id="dev">
+    <span class="kick">10 · Dev</span>
+    <h2 class="sec">Tokens (Tailwind v4)</h2>
+    <p class="sec-sub">Nomes reais de <code style="color:var(--verde-limao)">src/app/globals.css</code> + as adições do v2 (info, movimento).</p>
+    <pre>:root{
+  --creme:#f1ede2; --verde-folha:#a8b92b; --verde-limao:#c8ff50;
+  --amarelo-sol:#ffd533; --marrom-raiz:#4b3a2a;
+  --preto-raiz:#0b0b0a; --preto-2:#15140f;
+  --surface:#1a1813; --surface-2:#221f18; --border:#38332a; --muted:#b7b0a0;
+  --danger:#ff6b5e; --success:var(--verde-limao); --accent:var(--verde-limao);
+  /* novos no v2 */
+  --info:#7fb2ff;
+  --dur-fast:120ms; --dur:180ms; --dur-slow:280ms;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+@theme inline{
+  --color-verde-limao:var(--verde-limao);
+  --color-amarelo-sol:var(--amarelo-sol);
+  --color-verde-folha:var(--verde-folha);
+  --color-info:var(--info);            /* novo — mapeia AWAITING_REVIEW */
+  --font-display:var(--font-anton);    /* proclama */
+  --font-condensed:var(--font-oswald); /* orienta */
+  --font-sans:var(--font-inter);       /* informa */
+}</pre>
+  </section>
+
+  <div class="footer">
+    <span>Design System · Acampamento RAIZ 2026 — “Todo fruto revela uma raiz.”</span>
+    <span>Tema dark · WCAG 2.1 AA · Anton / Oswald / Inter</span>
+  </div>
+</div>
+</body>
+</html>

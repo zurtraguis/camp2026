@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "activePhase": null,
+  "completedPhases": [],
+  "track": "standard",
+  "project_type": null,
+  "gates_skipped": [],
+  "lastSnapshotHash": null,
+  "updatedAt": null,
+  "_doc": "Fonte única de verdade para estado de fase. Use scripts/phase-state.mjs para mutações. project_type ∈ {saas, internal-app, landing, single-page, blog, ecommerce, repository-catalog}. gates_skipped[] guarda objetos { gate, reason }."
+}

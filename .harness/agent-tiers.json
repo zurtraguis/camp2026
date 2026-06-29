@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "_doc": "Mapeamento abstrato tier → modelo concreto. v2: adiciona reasoning-nano e agentsByProjectType (overrides aplicados quando phase-state.project_type bate). Main agent (invocador) usa SEMPRE reasoning-heavy; subagents seguem `agents` ⊕ overrides.",
+  "tiers": {
+    "reasoning-heavy": {
+      "claude": "opus",
+      "openai": "gpt-5",
+      "google": "gemini-2.5-pro",
+      "xai": "grok-4",
+      "local": "llama-3.3-70b"
+    },
+    "reasoning-medium": {
+      "claude": "sonnet",
+      "openai": "gpt-5-mini",
+      "google": "gemini-2.5-flash",
+      "xai": "grok-4-mini",
+      "local": "llama-3.3-8b"
+    },
+    "reasoning-light": {
+      "claude": "haiku",
+      "openai": "gpt-5-nano",
+      "google": "gemini-2.5-flash-lite",
+      "xai": "grok-4-nano",
+      "local": "qwen-2.5-7b"
+    },
+    "reasoning-nano": {
+      "claude": "haiku",
+      "openai": "gpt-5-nano",
+      "google": "gemini-2.5-flash-lite",
+      "xai": "grok-4-nano",
+      "local": "qwen-2.5-3b"
+    }
+  },
+  "agents": {
+    "architect":         "reasoning-heavy",
+    "designer":          "reasoning-heavy",
+    "security-auditor":  "reasoning-heavy",
+    "harness-reviewer":  "reasoning-medium",
+    "builder":           "reasoning-medium",
+    "debugger":          "reasoning-medium",
+    "review":            "reasoning-medium",
+    "ui-reviewer":       "reasoning-medium",
+    "seo-specialist":    "reasoning-light",
+    "asset-creator":     "reasoning-light",
+    "content-writer":    "reasoning-light",
+    "qa-auditor":        "reasoning-nano",
+    "deploy-manager":    "reasoning-nano",
+    "lint-formatter":    "reasoning-nano"
+  },
+  "agentsByProjectType": {
+    "_doc": "Overrides aplicados sobre `agents` quando phase-state.project_type bate.",
+    "saas":               {},
+    "landing":            { "builder": "reasoning-light",  "designer": "reasoning-heavy", "seo-specialist": "reasoning-medium" },
+    "single-page":        { "builder": "reasoning-light",  "designer": "reasoning-heavy" },
+    "blog":               { "builder": "reasoning-light",  "content-writer": "reasoning-medium", "seo-specialist": "reasoning-medium" },
+    "ecommerce":          { "builder": "reasoning-heavy",  "security-auditor": "reasoning-heavy" },
+    "internal-app":       { "designer": "reasoning-medium", "seo-specialist": "reasoning-nano", "security-auditor": "reasoning-heavy" },
+    "repository-catalog": { "builder": "reasoning-medium", "seo-specialist": "reasoning-medium", "content-writer": "reasoning-medium" }
+  },
+  "defaultProvider": "claude",
+  "providers": {
+    "claude":  { "envKey": "ANTHROPIC_API_KEY", "ide_hint": "Claude Code, Cline, Cursor" },
+    "openai":  { "envKey": "OPENAI_API_KEY",    "ide_hint": "Cursor, Continue, Aider" },
+    "google":  { "envKey": "GOOGLE_API_KEY",    "ide_hint": "Cursor, Aider" },
+    "xai":     { "envKey": "XAI_API_KEY",       "ide_hint": "Cursor, Cline" },
+    "local":   { "envKey": null,                 "ide_hint": "Ollama, LM Studio, llama.cpp" }
+  }
+}
