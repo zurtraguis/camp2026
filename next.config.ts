@@ -18,6 +18,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Build standalone para o container Docker/Portainer: gera
+  // `.next/standalone/server.js` (Node server auto-suficiente, sem `next start`).
+  // Convive com o caminho legado OpenNext/Cloudflare (wrangler.jsonc), que
+  // ignora esta opção ao rodar `opennextjs-cloudflare build`.
+  output: "standalone",
   turbopack: { root: projectRoot },
   // Prisma 7 + Turbopack (Next 16): evita "Cannot find module .prisma/client/default"
   serverExternalPackages: ["@prisma/client", "pg"],

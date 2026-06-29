@@ -1,0 +1,49 @@
+# Build/runtime artifacts — regerados dentro da imagem
+node_modules
+.next
+.open-next
+.wrangler
+dist
+out
+coverage
+test-results
+playwright-report
+src/generated/prisma
+
+# Segredos e ambiente local — NUNCA na imagem (injetados em runtime)
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# Git / CI / IDE / harness
+.git
+.github
+.husky
+.harness
+.harness-pristine
+.agents
+.claude
+.cursor
+.cursorignore
+.cursorrules
+
+# Docs, design e material pesado (não vão para a imagem de runtime)
+docs
+stacks
+packages
+tests
+e2e
+Artes
+*.docx
+design-system.html
+CHANGELOG.md
+CONTRIBUTING.md
+WORKFLOW.md
+README.md
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+tsconfig.tsbuildinfo
