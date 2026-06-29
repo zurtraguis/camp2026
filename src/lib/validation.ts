@@ -38,7 +38,7 @@ export const registrationSchema = z
     birthDate: z
       .string()
       .refine((s) => !Number.isNaN(Date.parse(s)), "Data inválida"),
-    gender: z.enum(["MALE", "FEMALE"]),
+    gender: z.enum(["MALE", "FEMALE"], { error: "Selecione o gênero" }),
     cpf: cpf.optional().or(z.literal("").transform(() => undefined)),
     phone: phone,
     email: z.string().email("E-mail inválido").optional().or(z.literal("")),
@@ -51,7 +51,9 @@ export const registrationSchema = z
     guardianCpf: cpf,
     guardianPhone: phone,
     guardianEmail: z.string().email("E-mail inválido").optional().or(z.literal("")),
-    guardianRelationship: z.enum(["pai", "mae", "responsavel_legal", "outro"]),
+    guardianRelationship: z.enum(["pai", "mae", "responsavel_legal", "outro"], {
+      error: "Selecione o grau de parentesco",
+    }),
 
     // Saúde (sensível)
     allergies: z.string().trim().max(500).optional(),
@@ -75,7 +77,9 @@ export const registrationSchema = z
     consentImage: z.boolean().default(false),
 
     // Pagamento
-    paymentMethod: z.enum(["CARD", "PIX"]),
+    paymentMethod: z.enum(["CARD", "PIX"], {
+      error: "Selecione a forma de pagamento",
+    }),
   })
   .superRefine((data, ctx) => {
     const age = ageOn(new Date(data.birthDate));
