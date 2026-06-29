@@ -66,3 +66,21 @@ jobs:
             NEXT_PUBLIC_PIX_RECEIVER_NAME=ACAMPAMENTO RAIZ
             NEXT_PUBLIC_PIX_RECEIVER_CITY=Manaus
             NEXT_PUBLIC_CONSENT_TERM_VERSION=v1-2026-06
+
+      # CD: dispara o redeploy no Portainer (re-pull da imagem + restart do
+      # serviço Swarm). O webhook é criado no Portainer (Service/Stack webhook)
+      # e guardado como secret PORTAINER_WEBHOOK_URL. Sem o secret, o passo é
+      # pulado sem falhar — o build continua válido e o redeploy fica manual.
+      - name: Redeploy no Portainer (webhook)
+        if: github.ref == 'refs/heads/main'
+        env:
+          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+        run: |
+          if [ -z "$WEBHOOK_URL" ]; then
+            echo "PORTAINER_WEBHOOK_URL não configurado — pulando redeploy automático."
+            echo "Configure em Settings → Secrets → Actions para habilitar o CD."
+            exit 0
+          fi
+          echo "Disparando redeploy no Portainer…"
+          code=$(curl -fsS -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL")
+          echo "Portainer respondeu HTTP $code"
