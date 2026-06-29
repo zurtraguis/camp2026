@@ -56,7 +56,7 @@ export function HeroSection() {
             Fazer inscrição
           </ButtonLink>
           <a
-            href="#sobre"
+            href="#tribos"
             className="inline-flex h-13 items-center px-7 font-condensed text-base font-semibold uppercase tracking-wide text-creme/70 transition-colors hover:text-creme focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao"
           >
             Saiba mais ↓

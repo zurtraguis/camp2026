@@ -19,14 +19,6 @@ export function SiteHeader() {
           <ul className="flex items-center gap-1 sm:gap-2">
             <li>
               <Link
-                href="#sobre"
-                className="hidden px-3 py-2 text-sm font-condensed font-semibold uppercase tracking-wide text-creme/70 transition-colors hover:text-creme focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao sm:inline-flex"
-              >
-                Sobre
-              </Link>
-            </li>
-            <li>
-              <Link
                 href="#tribos"
                 className="hidden px-3 py-2 text-sm font-condensed font-semibold uppercase tracking-wide text-creme/70 transition-colors hover:text-creme focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao sm:inline-flex"
               >

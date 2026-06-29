@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { HeroSection } from "@/components/raiz/HeroSection";
-import { SobreSection } from "@/components/raiz/SobreSection";
 import { TribosSection } from "@/components/raiz/TribosSection";
 import { ComoFuncionaSection } from "@/components/raiz/ComoFuncionaSection";
 import { ValoresSection } from "@/components/raiz/ValoresSection";
@@ -20,7 +19,6 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
-      <SobreSection />
       <TribosSection />
       <ComoFuncionaSection />
       <ValoresSection />
