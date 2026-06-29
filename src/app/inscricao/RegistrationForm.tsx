@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 import {
   Button,
@@ -32,6 +33,79 @@ const STEPS = [
 ] as const;
 
 type Step = 0 | 1 | 2 | 3;
+
+/* ─── Máscaras + validação client-side (espelha o schema Zod do servidor) ─── */
+const digits = (v: string) => v.replace(/\D/g, "");
+const isEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+function maskPhone(v: string) {
+  const d = digits(v).slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
+
+function maskCpf(v: string) {
+  return digits(v)
+    .slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
+/** Aplica máscara no input não-controlado, preservando o cursor no fim. */
+function applyMask(fn: (v: string) => string) {
+  return (e: ChangeEvent<HTMLInputElement>) => {
+    e.target.value = fn(e.target.value);
+  };
+}
+
+/** Valida os campos obrigatórios/formatados da etapa. Retorna mapa de erros. */
+function validateStep(form: HTMLFormElement, step: Step): Record<string, string> {
+  const el = (name: string) =>
+    form.elements.namedItem(name) as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | null;
+  const val = (name: string) => (el(name)?.value ?? "").trim();
+  const checked = (name: string) =>
+    (form.elements.namedItem(name) as HTMLInputElement | null)?.checked ?? false;
+  const e: Record<string, string> = {};
+
+  if (step === 0) {
+    if (val("fullName").length < 3) e.fullName = "Informe o nome completo";
+    if (!val("birthDate")) e.birthDate = "Informe a data de nascimento";
+    if (!val("gender")) e.gender = "Selecione o gênero";
+    const ph = digits(val("phone"));
+    if (ph.length < 10 || ph.length > 11)
+      e.phone = "Telefone inválido — informe DDD + número";
+    const cpf = digits(val("cpf"));
+    if (cpf && cpf.length !== 11) e.cpf = "CPF deve ter 11 dígitos";
+    const em = val("email");
+    if (em && !isEmail(em)) e.email = "E-mail inválido";
+  } else if (step === 1) {
+    if (val("guardianName").length < 3)
+      e.guardianName = "Informe o nome do responsável";
+    if (digits(val("guardianCpf")).length !== 11)
+      e.guardianCpf = "CPF deve ter 11 dígitos";
+    if (!val("guardianRelationship"))
+      e.guardianRelationship = "Selecione o grau de parentesco";
+    const gph = digits(val("guardianPhone"));
+    if (gph.length < 10 || gph.length > 11)
+      e.guardianPhone = "Telefone inválido — informe DDD + número";
+    const gem = val("guardianEmail");
+    if (gem && !isEmail(gem)) e.guardianEmail = "E-mail inválido";
+    if (!checked("consentData"))
+      e.consentData = "É necessário consentir o tratamento de dados";
+    if (!checked("consentHealth"))
+      e.consentHealth = "É necessário consentir os dados de saúde";
+    if (!checked("consentActivities"))
+      e.consentActivities = "É necessário autorizar a participação";
+  }
+  // Etapa 2 (saúde) é opcional; etapa 3 (pagamento) tem opção marcada por padrão.
+  return e;
+}
 
 /* ─── Submit button (needs useFormStatus inside the form) ─── */
 function SubmitButton({ label }: { label: string }) {
@@ -103,15 +177,32 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
   );
 
   const [step, setStep] = useState<Step>(0);
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
   const firstRender = useRef(true);
 
-  const err = state.errors ?? {};
+  // Erros do servidor (após submit) + erros validados no cliente por etapa.
+  const err = { ...(state.errors ?? {}), ...clientErrors };
 
   function goNext() {
+    const form = formRef.current;
+    if (form) {
+      const stepErrors = validateStep(form, step);
+      if (Object.keys(stepErrors).length > 0) {
+        setClientErrors(stepErrors);
+        // Foca o primeiro campo com erro para correção imediata (a11y).
+        const first = Object.keys(stepErrors)[0];
+        requestAnimationFrame(() =>
+          form.querySelector<HTMLElement>(`[name="${first}"]`)?.focus(),
+        );
+        return;
+      }
+    }
+    setClientErrors({});
     setStep((s) => Math.min(s + 1, 3) as Step);
   }
   function goBack() {
+    setClientErrors({});
     setStep((s) => Math.max(s - 1, 0) as Step);
   }
 
@@ -129,8 +220,11 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
   }, [step]);
 
   /* Only show global error banner when there are errors so aria-live fires */
-  const hasErrors = state.errors && Object.keys(state.errors).length > 0;
-  const globalMessage = !state.ok && state.message && !hasErrors ? state.message : null;
+  const hasErrors = Object.keys(err).length > 0;
+  const serverHasFieldErrors =
+    !!state.errors && Object.keys(state.errors).length > 0;
+  const globalMessage =
+    !state.ok && state.message && !serverHasFieldErrors ? state.message : null;
 
   return (
     <Card>
@@ -145,7 +239,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
       <div aria-live="polite" aria-atomic="true" className="mb-4">
         {hasErrors && (
           <Callout tone="danger" title="Revise os campos destacados">
-            {state.message}
+            {state.message ?? "Preencha os campos obrigatórios corretamente."}
           </Callout>
         )}
         {globalMessage && <Callout tone="danger">{globalMessage}</Callout>}
@@ -237,6 +331,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
                 autoComplete="off"
                 maxLength={14}
                 placeholder="000.000.000-00"
+                onChange={applyMask(maskCpf)}
               />
             </Field>
 
@@ -255,6 +350,8 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
                 required
                 aria-required="true"
                 placeholder="(00) 00000-0000"
+                aria-describedby={err.phone ? "phone-error" : undefined}
+                onChange={applyMask(maskPhone)}
               />
             </Field>
           </div>
@@ -351,6 +448,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
                 placeholder="000.000.000-00"
                 required
                 aria-required="true"
+                onChange={applyMask(maskCpf)}
               />
             </Field>
 
@@ -393,6 +491,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
                 placeholder="(00) 00000-0000"
                 required
                 aria-required="true"
+                onChange={applyMask(maskPhone)}
               />
             </Field>
 

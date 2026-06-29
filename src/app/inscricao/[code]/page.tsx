@@ -2,11 +2,9 @@ import { notFound } from "next/navigation";
 import { getRegistrationByCode } from "@/lib/registration.service";
 import { getPixDisplay } from "@/lib/payment.service";
 import { formatBRL } from "@/lib/format";
-import { TRIBO_META } from "@/lib/tribos";
 import { Callout, Badge, Card, Button } from "@/components/ui";
 import { startCheckoutAction } from "@/app/inscricao/actions";
 import { PixPanel } from "./PixPanel";
-import type { TriboId } from "@/lib/tribos";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +27,9 @@ export default async function RegistrationStatusPage({
   const reg = await getRegistrationByCode(code);
   if (!reg) notFound();
 
-  const tribo = TRIBO_META[reg.tribo as TriboId];
+  // A tribo é atribuída internamente (registration.service) e fica disponível
+  // só no painel admin. A revelação ao campista acontecerá depois — aqui
+  // mostramos apenas um teaser, sem expor a tribo sorteada.
   const payment = reg.payment;
   const isConfirmed = reg.status === "CONFIRMED";
   const isAwaitingReview = reg.status === "AWAITING_REVIEW";
@@ -95,34 +95,25 @@ export default async function RegistrationStatusPage({
           </div>
         </div>
 
-        {/* Tribo */}
-        <div
-          className="rounded-xl border p-4"
-          style={{
-            borderColor: `${tribo.cor}40`,
-            backgroundColor: `${tribo.cor}0d`,
-          }}
-        >
+        {/* Tribo — sorteio interno; revelação ao campista acontecerá depois */}
+        <div className="rounded-xl border border-verde-folha/30 bg-verde-folha/5 p-4">
           <p className="text-xs font-condensed uppercase tracking-widest text-muted">
             Sua tribo
           </p>
-          <p
-            className="font-display text-3xl"
-            style={{ color: tribo.cor }}
-          >
-            {tribo.nome}
+          <p className="font-display text-3xl text-verde-limao">
+            Será revelada em breve <span aria-hidden="true">🌱</span>
           </p>
           <p className="mt-0.5 text-sm text-muted">
-            {tribo.significado}
+            O sorteio das tribos será anunciado pela organização mais perto do
+            acampamento. Fique de olho!
           </p>
         </div>
 
         {/* ── Status: CONFIRMED ── */}
         {isConfirmed && (
           <Callout tone="success" title="Inscrição confirmada!">
-            Pagamento confirmado. Você faz parte da tribo{" "}
-            <strong>{tribo.nome}</strong> — {tribo.significado}. Até breve no
-            RAIZ 2026!
+            Pagamento confirmado. Sua vaga está garantida — a tribo será
+            revelada em breve pela organização. Até breve no RAIZ 2026!
           </Callout>
         )}
 
