@@ -61,7 +61,11 @@ services:
         order: start-first
         failure_action: rollback
       # Labels Traefik DEVEM ficar em deploy.labels no Swarm (provider Swarm lê
-      # labels do serviço, não do container).
+      # labels do serviço, não do container). Valores confirmados contra o
+      # Traefik do host: provider network=network_swarm_public, entrypoint
+      # websecure (:443), certresolver=letsencryptresolver. O redirect HTTP→HTTPS
+      # já é feito globalmente por um router `http-catchall` no Traefik, então
+      # NÃO declaramos router no entrypoint `web` aqui (evita duplicação).
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=network_swarm_public"
@@ -69,11 +73,6 @@ services:
         - "traefik.http.routers.acamp.entrypoints=websecure"
         - "traefik.http.routers.acamp.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.acamp.loadbalancer.server.port=3000"
-        # Redireciona HTTP→HTTPS (ajuste/remova se o Traefik já faz globalmente):
-        - "traefik.http.routers.acamp-http.rule=Host(`acamp2026.futagoautomacoes.com.br`)"
-        - "traefik.http.routers.acamp-http.entrypoints=web"
-        - "traefik.http.routers.acamp-http.middlewares=acamp-https"
-        - "traefik.http.middlewares.acamp-https.redirectscheme.scheme=https"
 
 # Rede pública do Traefik — criada fora desta stack.
 networks:
