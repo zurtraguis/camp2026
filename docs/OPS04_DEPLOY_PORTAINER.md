@@ -87,6 +87,26 @@ externa `network_swarm_public`. Ajuste se o seu Traefik usar nomes diferentes:
   `https://acamp2026.futagoautomacoes.com.br/api/webhooks/stripe` e conferir
   `STRIPE_WEBHOOK_SECRET`.
 
+## CD — redeploy automático (webhook do Portainer)
+
+Para eliminar o "Pull and redeploy" manual: o workflow `docker-publish.yml`
+dispara um webhook do Portainer ao fim do build (passo *Redeploy no Portainer*).
+Sem o secret configurado, o passo é pulado sem falhar (redeploy continua manual).
+
+**Configurar (uma vez):**
+1. No Portainer, abra o **serviço `acamp_web`** (ou a stack `acamp`) → seção
+   **Service webhook** → **Create a service webhook** → copie a URL gerada
+   (algo como `https://<portainer>/api/webhooks/<uuid>`).
+2. No GitHub: repo → **Settings → Secrets and variables → Actions → New
+   repository secret** → nome **`PORTAINER_WEBHOOK_URL`**, valor = a URL.
+
+A partir daí: push em `main` → CI builda a imagem `:latest` → chama o webhook →
+o Swarm faz **re-pull** da imagem e reinicia o serviço (resolve o cache do
+`:latest` sem precisar fixar tag por commit). Acompanhe em **Actions**.
+
+> Segurança: qualquer um com a URL do webhook pode disparar um redeploy. Por isso
+> ela fica como **secret** (não como variável) e nunca é versionada.
+
 ## Troubleshooting
 
 - **`No such image: ...:latest`** → o workflow não rodou ou o pacote está privado
