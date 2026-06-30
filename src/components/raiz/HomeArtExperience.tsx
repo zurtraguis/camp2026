@@ -19,6 +19,19 @@ type FaqItem = {
   buttonClass: string;
 };
 
+type NavItem = {
+  label: string;
+  href: string;
+};
+
+const navItems: NavItem[] = [
+  { label: "Início", href: "#inicio" },
+  { label: "Como funciona", href: "#como-funciona" },
+  { label: "Tribos", href: "#tribos" },
+  { label: "Dúvidas", href: "#faq" },
+  { label: "Quero me inscrever", href: "/inscricao" },
+];
+
 const artSections: ArtSection[] = [
   {
     id: "inicio",
@@ -91,10 +104,62 @@ const faqItems: FaqItem[] = [
 
 export function HomeArtExperience() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="bg-black">
       <h1 className="sr-only">Acampamento RAIZ 2026</h1>
+
+      {/* Menu de navegação acionado pelo ícone (3 traços) da arte */}
+      <nav
+        aria-label="Navegação principal"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 mx-auto w-full max-w-[1360px]"
+      >
+        <div className="relative">
+          <button
+            type="button"
+            aria-label={menuOpen ? "Fechar menu" : "Abrir menu de navegação"}
+            aria-expanded={menuOpen}
+            aria-controls="home-nav-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+            className="pointer-events-auto absolute right-[2%] top-[2.6vw] flex h-[6.2vw] max-h-16 min-h-11 w-[7vw] min-w-11 max-w-20 items-center justify-center rounded-md focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-verde-limao sm:top-[2.2vw]"
+          >
+            <span className="sr-only">Menu</span>
+          </button>
+
+          {menuOpen && (
+            <>
+              {/* Fecha o menu ao clicar fora */}
+              <button
+                type="button"
+                aria-label="Fechar menu"
+                tabIndex={-1}
+                onClick={() => setMenuOpen(false)}
+                className="pointer-events-auto fixed inset-0 h-screen w-screen cursor-default"
+              />
+              <div
+                id="home-nav-menu"
+                className="pointer-events-auto absolute right-[2%] top-[8.4vw] w-56 max-w-[80vw] rounded-lg border border-verde-limao/30 bg-[#070706]/95 p-2 shadow-[0_18px_50px_rgba(0,0,0,0.7)] backdrop-blur-md sm:top-20"
+              >
+              <ul className="flex flex-col">
+                {navItems.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="block rounded-md px-4 py-2.5 font-condensed text-sm font-bold uppercase tracking-[0.18em] text-creme transition-colors hover:bg-verde-limao hover:text-[#0b0b0a] focus-visible:bg-verde-limao focus-visible:text-[#0b0b0a] focus-visible:outline-none"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              </div>
+            </>
+          )}
+        </div>
+      </nav>
+
       {artSections.map((section) => (
         <section
           key={section.id}
@@ -114,15 +179,6 @@ export function HomeArtExperience() {
 
             {section.correction && (
               <>
-                <div
-                  aria-hidden="true"
-                  className="absolute left-1/2 top-[6.8%] h-[8%] w-[48%] -translate-x-1/2 bg-black/90 blur-sm"
-                />
-                <div className="absolute left-1/2 top-[7.2%] w-[80%] -translate-x-1/2 text-center">
-                  <p className="font-condensed text-[clamp(0.45rem,1.45vw,1.65rem)] font-bold uppercase tracking-[0.5em] text-verde-limao">
-                    Serão reveladas perto do acamp
-                  </p>
-                </div>
                 <div
                   aria-hidden="true"
                   className="absolute left-1/2 top-[27.1%] h-[12.6%] w-[55%] -translate-x-1/2 bg-black"

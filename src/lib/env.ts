@@ -20,7 +20,20 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_").optional(),
 
-  // Supabase Storage (upload de comprovantes Pix)
+  // Storage de comprovantes Pix — backend S3 (SeaweedFS / MinIO / R2). Preferido
+  // quando configurado; senão cai no Supabase Storage abaixo.
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().default("us-east-1"),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_BUCKET: z.string().default("comprovantes"),
+  // SeaweedFS/MinIO usam path-style (endpoint/bucket/key). Em "true" (padrão).
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((v) => v === "true"),
+
+  // Supabase Storage (fallback do upload de comprovantes Pix)
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_COMPROVANTES_BUCKET: z.string().default("comprovantes"),

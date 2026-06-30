@@ -119,7 +119,7 @@ export async function submitPixReceipt(
 ): Promise<void> {
   if (!storageConfigured()) {
     throw new Error(
-      "Upload indisponível: configure o Supabase Storage (NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).",
+      "Upload indisponível: configure o storage de comprovantes (S3/SeaweedFS: S3_ENDPOINT/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY, ou Supabase: NEXT_PUBLIC_SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY).",
     );
   }
   const reg = await db.registration.findUnique({

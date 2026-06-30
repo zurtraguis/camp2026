@@ -5,18 +5,21 @@ export function RegistrationArtShell({ children }: { children: ReactNode }) {
     <main
       id="main-content"
       data-testid="registration-art-shell"
-      className="registration-scene relative min-h-screen overflow-hidden px-4 pb-12 pt-[15.25rem] text-creme sm:px-6 sm:pb-14 sm:pt-[16.8rem] lg:pt-[18.5rem]"
+      className="registration-scene relative min-h-screen overflow-hidden px-4 pb-12 pt-[min(48vw,26rem)] text-creme sm:px-6 sm:pb-14"
     >
+      {/* Mantido para compatibilidade; o cabeçalho (RAIZ + tagline) agora vem da
+          própria arte de fundo (forms-bg.webp), por isso não renderizamos texto
+          aqui — evita duplicar o que já está na imagem. */}
       <div
         aria-hidden="true"
         data-testid="registration-header-art"
-        className="registration-header-art absolute inset-x-0 top-0 h-[22rem] sm:h-[24rem] lg:h-[26rem]"
+        className="registration-header-art pointer-events-none absolute inset-x-0 top-0 h-px"
       />
 
-      <div className="relative mx-auto flex max-w-6xl flex-col items-center">
+      <div className="relative mx-auto flex max-w-3xl flex-col items-center">
         <section
           data-testid="registration-panel"
-          className="root-card registration-panel w-full max-w-[69rem] px-5 py-8 sm:px-9 sm:py-10 lg:min-h-[58.75rem] lg:px-10"
+          className="root-card registration-panel w-full max-w-[46rem] px-5 py-7 sm:px-8 sm:py-9"
         >
           {children}
         </section>

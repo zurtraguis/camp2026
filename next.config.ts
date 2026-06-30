@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
   // ignora esta opção ao rodar `opennextjs-cloudflare build`.
   output: "standalone",
   turbopack: { root: projectRoot },
+  // O upload do comprovante Pix (foto/PDF) costuma passar do limite padrão de
+  // 1 MB das Server Actions, o que derrubava a página com erro genérico.
+  // Elevamos o limite com folga; a validação real (tamanho/tipo) fica em storage.ts.
+  experimental: {
+    serverActions: { bodySizeLimit: "12mb" },
+  },
   // Prisma 7 + Turbopack (Next 16): evita "Cannot find module .prisma/client/default"
   serverExternalPackages: ["@prisma/client", "pg"],
   // Hardening: remove o header X-Powered-By

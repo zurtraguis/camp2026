@@ -99,20 +99,26 @@ export function Field({
 }) {
   const hintId = hint ? `${htmlFor}-hint` : undefined;
   const errId = error ? `${htmlFor}-error` : undefined;
+  // Layout em coluna com a dica/erro DEPOIS do controle: garante que os campos
+  // de uma mesma linha (grid) tenham os inputs alinhados na vertical, mesmo
+  // quando um tem dica (ex.: "Data de nascimento") e o vizinho não (ex.: "Gênero").
   return (
-    <div className={cn("space-y-1.5", className)}>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-creme">
+    <div className={cn("flex flex-col", className)}>
+      <label
+        htmlFor={htmlFor}
+        className="mb-1.5 block text-sm font-medium text-creme"
+      >
         {label}
         {required && <span className="ml-1 text-verde-limao">*</span>}
       </label>
+      {children}
       {hint && (
-        <p id={hintId} className="text-xs text-muted">
+        <p id={hintId} className="mt-1.5 text-xs text-muted">
           {hint}
         </p>
       )}
-      {children}
       {error && (
-        <p id={errId} className="text-xs font-medium text-danger">
+        <p id={errId} className="mt-1.5 text-xs font-medium text-danger">
           {error}
         </p>
       )}
