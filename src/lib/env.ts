@@ -19,6 +19,9 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().startsWith("pk_").optional(),
+  // Produto do catálogo Stripe (atribui as cobranças a ele). Opcional: sem ele,
+  // o checkout usa um produto ad-hoc (product_data).
+  STRIPE_PRODUCT_ID: z.string().startsWith("prod_").optional(),
 
   // Storage de comprovantes Pix — backend S3 (SeaweedFS / MinIO / R2). Preferido
   // quando configurado; senão cai no Supabase Storage abaixo.

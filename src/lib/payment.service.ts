@@ -28,10 +28,16 @@ export async function createCheckoutSession(registrationId: string): Promise<str
         price_data: {
           currency: "brl",
           unit_amount: reg.payment.amountCents,
-          product_data: {
-            name: `Inscrição Acampamento RAIZ 2026 — ${reg.fullName}`,
-            description: `Código ${reg.publicCode}`,
-          },
+          // Atribui a cobrança ao produto do catálogo quando configurado;
+          // senão cria um produto ad-hoc (comportamento anterior).
+          ...(env.STRIPE_PRODUCT_ID
+            ? { product: env.STRIPE_PRODUCT_ID }
+            : {
+                product_data: {
+                  name: `Inscrição Acampamento RAIZ 2026 — ${reg.fullName}`,
+                  description: `Código ${reg.publicCode}`,
+                },
+              }),
         },
       },
     ],
