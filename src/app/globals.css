@@ -225,11 +225,14 @@ html {
 }
 
 .registration-scene {
-  background:
-    radial-gradient(circle at 50% 0%, rgba(217, 194, 145, 0.18), transparent 20rem),
-    radial-gradient(circle at 7% 36%, rgba(58, 70, 18, 0.11), transparent 14rem),
-    radial-gradient(circle at 94% 34%, rgba(65, 82, 24, 0.1), transparent 13rem),
-    linear-gradient(180deg, #070706 0%, #050504 48%, #020202 100%);
+  background-color: #070706;
+  background-image: url("/raiz-art/forms-bg.webp");
+  background-position: top center;
+  background-repeat: no-repeat;
+  /* Travado na largura NATIVA da arte (941px) — nunca faz upscale, preservando a
+     nitidez. Em telas mais largas a arte fica centralizada e as bordas escuras
+     se fundem com o preto do fundo. O padding-top do conteúdo acompanha isso. */
+  background-size: min(100%, 941px) auto;
 }
 
 .registration-scene::before,
@@ -241,38 +244,22 @@ html {
   pointer-events: none;
 }
 
+/* Vinheta suave para dar profundidade SEM cobrir a arte de fundo. */
 .registration-scene::before {
   inset: 0;
   background-image:
-    radial-gradient(ellipse at 50% 100%, rgba(87, 64, 38, 0.65), transparent 50%),
-    repeating-linear-gradient(145deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 12px);
-  opacity: 0.55;
+    radial-gradient(120% 60% at 50% 100%, rgba(0, 0, 0, 0.55), transparent 60%);
+  opacity: 0.5;
 }
 
 .registration-scene::after {
   inset: auto 0 0;
-  height: 18rem;
-  background:
-    radial-gradient(ellipse at 50% 100%, rgba(78, 58, 36, 0.9), transparent 62%),
-    linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.92));
+  height: 14rem;
+  background: linear-gradient(180deg, transparent, #070706 92%);
 }
 
-.registration-header-art {
-  background-image: url("/raiz-art/forms.webp");
-  background-position: top center;
-  background-repeat: no-repeat;
-  background-size: min(100vw, 1536px) auto;
-}
-
-.registration-header-art::before {
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.18) 54%, #070706 100%);
-}
-
-.registration-header-art::after {
-  inset: 42% 0 0;
-  background: linear-gradient(180deg, transparent, #070706 82%);
-}
+/* O cabeçalho (RAIZ + tagline) e os raios de luz agora vêm da própria arte de
+   fundo (forms-bg.webp); este elemento permanece apenas por compatibilidade. */
 
 @media (prefers-reduced-motion: reduce) {
   html {

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { HomeArtExperience } from "./HomeArtExperience";
 
@@ -14,10 +14,34 @@ describe("HomeArtExperience", () => {
       "src",
       expect.stringContaining("home-2.webp"),
     );
-    expect(screen.getByText(/serão reveladas perto do acamp/i)).toBeInTheDocument();
+    expect(screen.queryByText(/serão reveladas perto do acamp/i)).toBeNull();
     expect(
       screen.getByText(/perto do acampamento você saberá qual é a sua tribo/i),
     ).toBeInTheDocument();
+  });
+
+  it("reveals a navigation menu from the artwork menu icon", () => {
+    const { container } = render(<HomeArtExperience />);
+    const view = within(container);
+
+    const trigger = view.getByRole("button", {
+      name: /abrir menu de navegação/i,
+    });
+    expect(view.queryByRole("link", { name: /^tribos$/i })).toBeNull();
+
+    fireEvent.click(trigger);
+
+    expect(view.getByRole("link", { name: /como funciona/i })).toHaveAttribute(
+      "href",
+      "#como-funciona",
+    );
+    expect(view.getByRole("link", { name: /^tribos$/i })).toHaveAttribute(
+      "href",
+      "#tribos",
+    );
+    expect(
+      view.getByRole("link", { name: /quero me inscrever/i }),
+    ).toHaveAttribute("href", "/inscricao");
   });
 
   it("uses compact art frames and green hover overlays on participation links", () => {

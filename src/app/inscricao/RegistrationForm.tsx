@@ -13,7 +13,7 @@ import {
   Callout,
 } from "@/components/ui";
 import { TRIAGE_FLAGS, TRIAGE_FLAG_LABELS } from "@/lib/validation";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, ageOn, MIN_AGE, MAX_AGE } from "@/lib/format";
 import { createRegistrationAction } from "@/app/inscricao/actions";
 import type { RegistrationFormState } from "@/app/inscricao/actions";
 
@@ -74,7 +74,20 @@ function validateStep(form: HTMLFormElement, step: Step): Record<string, string>
 
   if (step === 0) {
     if (val("fullName").length < 3) e.fullName = "Informe o nome completo";
-    if (!val("birthDate")) e.birthDate = "Informe a data de nascimento";
+    if (!val("birthDate")) {
+      e.birthDate = "Informe a data de nascimento";
+    } else {
+      // Trava a idade já na 1ª etapa (espelha o superRefine do servidor), para
+      // não deixar o campista preencher tudo e só ser barrado no final.
+      const d = new Date(val("birthDate"));
+      if (Number.isNaN(d.getTime())) {
+        e.birthDate = "Data inválida";
+      } else {
+        const age = ageOn(d);
+        if (age < MIN_AGE || age > MAX_AGE)
+          e.birthDate = `A inscrição é para adolescentes de ${MIN_AGE} a ${MAX_AGE} anos (idade calculada: ${age}).`;
+      }
+    }
     if (!val("gender")) e.gender = "Selecione o gênero";
     const ph = digits(val("phone"));
     if (ph.length < 10 || ph.length > 11)
@@ -104,6 +117,29 @@ function validateStep(form: HTMLFormElement, step: Step): Record<string, string>
   }
   // Etapa 2 (saúde) é opcional; etapa 3 (pagamento) tem opção marcada por padrão.
   return e;
+}
+
+/* ─── Mapa campo → etapa, para reabrir a etapa certa quando o servidor
+   devolve um erro de campo (ex.: CPF duplicado). ─── */
+const FIELD_STEP: Record<string, Step> = {
+  fullName: 0, birthDate: 0, gender: 0, cpf: 0, phone: 0, email: 0,
+  shirtSize: 0, church: 0, city: 0,
+  guardianName: 1, guardianCpf: 1, guardianPhone: 1, guardianEmail: 1,
+  guardianRelationship: 1, consentData: 1, consentHealth: 1,
+  consentActivities: 1, consentImage: 1,
+  allergies: 2, medications: 2, dietaryRestrictions: 2, chronicConditions: 2,
+  healthNotes: 2, triageFlags: 2, triageNotes: 2,
+  paymentMethod: 3,
+};
+
+function firstStepWithError(errors: Record<string, string>): Step | null {
+  let target: Step | null = null;
+  for (const key of Object.keys(errors)) {
+    const s = FIELD_STEP[key];
+    if (s === undefined) continue;
+    if (target === null || s < target) target = s;
+  }
+  return target;
 }
 
 /* ─── Submit button (needs useFormStatus inside the form) ─── */
@@ -179,6 +215,58 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
   const formRef = useRef<HTMLFormElement>(null);
   const firstRender = useRef(true);
+  // Snapshot do que foi enviado: o React reseta o <form action> após a action,
+  // então repomos os valores se o servidor devolver erro (não perde o que foi
+  // digitado — apenas mostra o erro).
+  const lastSubmitted = useRef<FormData | null>(null);
+
+  // Envolve a action: guarda o snapshot e delega para a action do servidor.
+  function handleAction(formData: FormData) {
+    lastSubmitted.current = formData;
+    return formAction(formData);
+  }
+
+  // Quando o servidor devolve erros de campo, reabre a etapa do primeiro erro.
+  // Ajuste de estado durante o render (padrão recomendado do React em vez de um
+  // efeito com setState), com guarda por ref para rodar só uma vez por resposta.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
+    if (!state.ok && state.errors) {
+      const target = firstStepWithError(state.errors);
+      if (target !== null) setStep(target);
+    }
+  }
+
+  // Após a action retornar com erro, repõe no DOM os valores que o React pode
+  // ter limpado ao resetar o <form action> — não perde o que foi digitado.
+  useEffect(() => {
+    if (state.ok || !lastSubmitted.current) return;
+    const form = formRef.current;
+    if (!form) return;
+    for (const [name, value] of lastSubmitted.current.entries()) {
+      if (typeof value !== "string") continue;
+      const field = form.elements.namedItem(name);
+      if (!field) continue;
+      const nodes =
+        field instanceof RadioNodeList ? Array.from(field) : [field];
+      for (const node of nodes) {
+        if (
+          node instanceof HTMLInputElement &&
+          (node.type === "checkbox" || node.type === "radio")
+        ) {
+          if (node.value === value) node.checked = true;
+        } else if (
+          (node instanceof HTMLInputElement ||
+            node instanceof HTMLSelectElement ||
+            node instanceof HTMLTextAreaElement) &&
+          !node.value
+        ) {
+          node.value = value;
+        }
+      }
+    }
+  }, [state]);
 
   // Erros do servidor (após submit) + erros validados no cliente por etapa.
   const err = { ...(state.errors ?? {}), ...clientErrors };
@@ -244,7 +332,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
         {globalMessage && <Callout tone="danger">{globalMessage}</Callout>}
       </div>
 
-      <form ref={formRef} action={formAction} noValidate>
+      <form ref={formRef} action={handleAction} noValidate>
         {/* ═══════════════════════════════════
             STEP 0 — Campista
         ═══════════════════════════════════ */}
