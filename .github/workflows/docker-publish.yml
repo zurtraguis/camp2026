@@ -71,8 +71,12 @@ jobs:
       # serviço Swarm). O webhook é criado no Portainer (Service/Stack webhook)
       # e guardado como secret PORTAINER_WEBHOOK_URL. Sem o secret, o passo é
       # pulado sem falhar — o build continua válido e o redeploy fica manual.
+      # Best-effort: a publicação da imagem (passo acima) é o que importa. Um erro
+      # no webhook (ex.: 502 transitório do Portainer/proxy) NÃO deve reprovar o
+      # build — por isso continue-on-error + retry, sem `curl -f`.
       - name: Redeploy no Portainer (webhook)
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         env:
           WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
         run: |
@@ -81,6 +85,16 @@ jobs:
             echo "Configure em Settings → Secrets → Actions para habilitar o CD."
             exit 0
           fi
-          echo "Disparando redeploy no Portainer…"
-          code=$(curl -fsS -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL")
-          echo "Portainer respondeu HTTP $code"
+          for attempt in 1 2 3 4; do
+            echo "Disparando redeploy no Portainer (tentativa $attempt)…"
+            code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$WEBHOOK_URL" || echo "000")
+            echo "Portainer respondeu HTTP $code"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              echo "✅ Redeploy disparado com sucesso."
+              exit 0
+            fi
+            echo "⚠️ Resposta $code — aguardando 15s e tentando de novo…"
+            sleep 15
+          done
+          echo "::warning::Webhook do Portainer não respondeu 2xx após 4 tentativas."
+          echo "A imagem foi publicada; faça o redeploy manual ou verifique o webhook."
