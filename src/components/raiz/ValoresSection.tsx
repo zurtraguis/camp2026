@@ -17,108 +17,98 @@ export async function ValoresSection() {
     <section
       id="valores"
       aria-labelledby="valores-heading"
-      className="bg-surface/30 px-4 py-20 sm:px-6 sm:py-28"
+      className="raiz-section px-4 py-20 sm:px-6 sm:py-28"
     >
-      <div className="mx-auto max-w-6xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="mb-2 font-condensed text-xs font-semibold uppercase tracking-[0.2em] text-verde-limao">
-            Valores e lotes
-          </p>
+      <div className="relative mx-auto max-w-5xl">
+        <div className="text-center">
+          <p className="raiz-kicker">Valores e lotes</p>
           <h2
             id="valores-heading"
-            className="font-display text-4xl text-creme sm:text-5xl"
+            className="stone-title mt-3 font-display text-6xl leading-none sm:text-8xl"
           >
-            QUANTO CUSTA?
+            Quanto custa?
           </h2>
+        </div>
 
-          {lote ? (
-            /* Dynamic lote from DB */
-            <div className="mt-10 rounded-2xl border border-verde-limao/30 bg-surface p-8">
-              {lote.soldOut ? (
-                <div className="space-y-3">
-                  <Badge className="border-danger/40 bg-danger/10 text-danger">
-                    Esgotado
-                  </Badge>
-                  <p className="text-creme/70">
-                    Todas as vagas foram preenchidas. Acompanhe nossos canais
-                    para a próxima edição.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <Badge className="border-verde-limao/40 bg-verde-limao/10 text-verde-limao">
-                      {lote.name}
-                    </Badge>
-                    <Badge>
-                      {lote.remainingInLote}{" "}
-                      {lote.remainingInLote === 1 ? "vaga" : "vagas"} neste lote
-                    </Badge>
-                  </div>
-
-                  <p className="font-display text-6xl text-verde-limao">
-                    {formatBRL(lote.priceCents)}
-                  </p>
-                  <p className="text-sm text-muted">
-                    Pagamento via cartão (parcelado) ou Pix.
-                  </p>
-
-                  <div className="pt-2">
-                    <ButtonLink href="/inscricao" size="lg">
-                      Garantir minha vaga
-                    </ButtonLink>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Static fallback */
-            <div className="mt-10 rounded-2xl border border-border bg-surface p-8">
-              <p className="mb-6 text-sm text-muted">
-                As vagas são limitadas e vendidas em lotes — quanto antes, menor
-                o valor.
-              </p>
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[
-                  { nome: "1º Lote", valor: "R$ 300", destaque: true },
-                  { nome: "2º Lote", valor: "R$ 400", destaque: false },
-                  { nome: "3º Lote", valor: "R$ 450", destaque: false },
-                ].map((l) => (
-                  <div
-                    key={l.nome}
-                    className={`rounded-xl border p-4 text-center ${
-                      l.destaque
-                        ? "border-verde-limao/50 bg-verde-limao/5"
-                        : "border-border"
-                    }`}
-                  >
-                    <p className="font-condensed text-xs font-semibold uppercase tracking-widest text-muted">
-                      {l.nome}
-                    </p>
-                    <p
-                      className={`mt-1 font-display text-3xl ${
-                        l.destaque ? "text-verde-limao" : "text-creme"
-                      }`}
-                    >
-                      {l.valor}
-                    </p>
-                  </div>
-                ))}
+        {lote ? (
+          <div className="root-card mx-auto mt-10 max-w-3xl p-8 text-center sm:p-10">
+            {lote.soldOut ? (
+              <div className="space-y-4">
+                <Badge className="border-danger/40 bg-danger/10 text-danger">
+                  Esgotado
+                </Badge>
+                <p className="text-creme/75">
+                  Todas as vagas foram preenchidas. Acompanhe nossos canais para
+                  a próxima edição.
+                </p>
               </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <Badge className="border-verde-limao/45 bg-verde-limao/10 text-verde-limao">
+                    {lote.name}
+                  </Badge>
+                  <Badge>
+                    {lote.remainingInLote}{" "}
+                    {lote.remainingInLote === 1 ? "vaga" : "vagas"} neste lote
+                  </Badge>
+                </div>
 
-              <div className="mt-8">
+                <p className="font-display text-[clamp(4rem,11vw,8rem)] leading-none text-verde-limao">
+                  {formatBRL(lote.priceCents)}
+                </p>
+                <p className="text-base text-creme/70">
+                  Pagamento via cartão de crédito ou Pix. Vagas limitadas.
+                </p>
+
                 <ButtonLink href="/inscricao" size="lg">
-                  Fazer inscrição
+                  Garantir minha vaga
                 </ButtonLink>
               </div>
+            )}
+          </div>
+        ) : (
+          <div className="root-card mx-auto mt-10 max-w-4xl p-8 text-center sm:p-10">
+            <p className="mb-8 text-base text-creme/70">
+              As vagas são limitadas e vendidas em lotes. Quanto antes, menor o
+              valor.
+            </p>
 
-              <p className="mt-4 text-xs text-muted">
-                Pagamento por cartão de crédito ou Pix.
-              </p>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                { nome: "1º Lote", valor: "R$ 300", destaque: true },
+                { nome: "2º Lote", valor: "R$ 400", destaque: false },
+                { nome: "3º Lote", valor: "R$ 450", destaque: false },
+              ].map((l) => (
+                <div
+                  key={l.nome}
+                  className={`rounded-sm border p-5 text-center ${
+                    l.destaque
+                      ? "border-verde-limao/60 bg-verde-limao/10"
+                      : "border-verde-limao/20 bg-[#0b0b0a]/35"
+                  }`}
+                >
+                  <p className="font-condensed text-xs font-bold uppercase tracking-[0.3em] text-creme/60">
+                    {l.nome}
+                  </p>
+                  <p
+                    className={`mt-2 font-display text-4xl ${
+                      l.destaque ? "text-verde-limao" : "text-creme"
+                    }`}
+                  >
+                    {l.valor}
+                  </p>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            <div className="mt-8">
+              <ButtonLink href="/inscricao" size="lg">
+                Quero participar
+              </ButtonLink>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

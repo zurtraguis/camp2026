@@ -4,39 +4,31 @@ export function CTABand() {
   return (
     <section
       aria-labelledby="cta-heading"
-      className="relative overflow-hidden bg-verde-limao px-4 py-16 sm:px-6 sm:py-20"
+      className="raiz-section px-4 py-20 sm:px-6 sm:py-28"
     >
-      {/* Texture overlay */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
-          backgroundSize: "256px 256px",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-3xl text-center">
+      <div className="root-card relative mx-auto max-w-5xl px-6 py-14 text-center sm:px-12 sm:py-16">
+        <div className="absolute inset-x-8 top-0 h-px bg-verde-limao shadow-[0_0_28px_rgba(200,255,80,0.9)]" />
         <h2
           id="cta-heading"
-          className="font-display text-4xl text-[#0b0b0a] sm:text-5xl"
+          className="stone-title font-display text-[clamp(3.5rem,10vw,8rem)] leading-[0.88]"
         >
-          PRONTO PARA<br />PLANTAR RAÍZES?
+          Pronto para
+          <br />
+          plantar <span className="brush-accent">raízes?</span>
         </h2>
-        <p className="mt-4 text-base font-medium text-[#0b0b0a]/70">
+        <p className="mx-auto mt-7 max-w-2xl text-xl font-medium text-creme/78">
           Vagas limitadas. Garanta a sua antes que o lote mude.
         </p>
 
         <div className="mt-8">
-          <ButtonLink
-            href="/inscricao"
-            size="lg"
-            className="bg-[#0b0b0a] text-verde-limao hover:bg-[#1a1a18]"
-          >
-            Fazer inscrição agora
+          <ButtonLink href="/inscricao" size="lg" className="min-w-72">
+            Quero participar
           </ButtonLink>
         </div>
+
+        <p className="mt-8 font-condensed text-xs font-bold uppercase tracking-[0.28em] text-creme/62">
+          Transforme seu setembro em algo que vai ficar pra sempre.
+        </p>
       </div>
     </section>
   );

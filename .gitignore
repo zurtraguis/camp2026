@@ -1,4 +1,8 @@
 node_modules
+
+# Artes-fonte em PNG (pesadas): versionamos só os WebP otimizados em public/raiz-art.
+/public/raiz-art/*.png
+
 # Keep environment variables out of version control
 .env
 .env.*

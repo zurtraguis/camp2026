@@ -1,5 +1,9 @@
 # Build/runtime artifacts — regerados dentro da imagem
 node_modules
+
+# Artes-fonte em PNG (servimos só os WebP em public/raiz-art)
+public/raiz-art/*.png
+
 .next
 .open-next
 .wrangler

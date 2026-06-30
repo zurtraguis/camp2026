@@ -1,74 +1,78 @@
 import { ButtonLink } from "@/components/ui";
 
+const bases = [
+  "Gálatas 5:16-25",
+  "Gálatas 6:7-9",
+  "Marcos 4:3-20",
+  "João 12:24",
+  "Ezequiel 36:26",
+  "Lucas 6:43-45",
+] as const;
+
 export function HeroSection() {
   return (
     <section
       aria-labelledby="hero-heading"
-      className="relative overflow-hidden bg-[#0b0b0a] px-4 pb-24 pt-20 sm:px-6 sm:pb-32 sm:pt-28"
+      className="raiz-section min-h-[calc(100svh-65px)] px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20"
     >
-      {/* Decorative background grain overlay */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
-          backgroundSize: "256px 256px",
-        }}
+        className="absolute inset-x-0 bottom-0 h-48 bg-[radial-gradient(ellipse_at_center,rgba(92,61,31,0.78),transparent_65%)]"
       />
-
-      {/* Lime glow blob */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-0 h-[480px] w-[640px] -translate-x-1/2 -translate-y-1/4 rounded-full bg-verde-limao/10 blur-[120px]"
+        className="absolute left-1/2 top-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[#d8c28b]/10 blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-4xl text-center">
-        {/* Pre-title badge */}
-        <p className="mb-4 font-condensed text-sm font-semibold uppercase tracking-[0.25em] text-verde-limao">
-          Acampamento de Adolescentes · 12 a 19 anos
-        </p>
+      <div className="relative mx-auto flex max-w-6xl flex-col items-center text-center">
+        <p className="raiz-kicker">Acampamento Rocket 2026</p>
 
-        {/* Main headline */}
         <h1
           id="hero-heading"
-          className="font-display text-[clamp(5rem,18vw,11rem)] leading-none tracking-tight text-creme"
+          className="stone-title mt-5 font-display text-[clamp(5.5rem,20vw,15rem)] leading-[0.78] tracking-wide"
         >
           RAIZ
-          <br />
-          <span className="text-verde-limao">2026</span>
         </h1>
 
-        {/* Tagline */}
-        <p className="mx-auto mt-6 max-w-xl font-condensed text-xl font-semibold uppercase tracking-widest text-creme/80 sm:text-2xl">
-          “Todo fruto revela uma raiz.”
+        <p className="mt-7 max-w-3xl font-condensed text-[clamp(1.75rem,4.5vw,4rem)] font-bold uppercase leading-none tracking-wide text-creme">
+          Todo fruto revela uma{" "}
+          <span className="brush-accent italic">raiz</span>
         </p>
 
-        {/* Sub-tagline */}
-        <p className="mx-auto mt-4 max-w-lg text-base text-muted sm:text-lg">
-          Três dias de imersão, descoberta e identidade — fundamentados em
-          Gálatas 5. Sexta a domingo.
-        </p>
+        <div className="mt-8">
+          <p className="font-display text-4xl tracking-[0.35em] text-verde-limao sm:text-5xl">
+            25 · 26 · 27
+          </p>
+          <p className="mt-1 font-condensed text-sm font-bold uppercase tracking-[0.55em] text-creme/80">
+            de setembro
+          </p>
+        </div>
 
-        {/* CTAs */}
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ButtonLink href="/inscricao" size="lg">
-            Fazer inscrição
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <ButtonLink href="/inscricao" size="lg" className="min-w-72">
+            Quero participar
           </ButtonLink>
-          <a
-            href="#tribos"
-            className="inline-flex h-13 items-center px-7 font-condensed text-base font-semibold uppercase tracking-wide text-creme/70 transition-colors hover:text-creme focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao"
-          >
-            Saiba mais ↓
-          </a>
+          <p className="font-condensed text-xs font-bold uppercase tracking-[0.36em] text-creme/70">
+            O restante será revelado no tempo certo.
+          </p>
+        </div>
+
+        <div className="mt-14 w-full max-w-5xl">
+          <p className="font-condensed text-sm font-bold uppercase tracking-[0.35em] text-verde-limao">
+            Base bíblica
+          </p>
+          <ul className="mt-5 grid gap-3 text-center font-condensed text-xs font-semibold uppercase tracking-[0.28em] text-creme/75 sm:grid-cols-2 lg:grid-cols-6">
+            {bases.map((base) => (
+              <li
+                key={base}
+                className="border-l border-verde-limao/45 px-3 first:border-l-0"
+              >
+                {base}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-
-      {/* Bottom rule with lime accent */}
-      <div
-        aria-hidden="true"
-        className="absolute bottom-0 left-1/2 h-px w-48 -translate-x-1/2 bg-gradient-to-r from-transparent via-verde-limao/60 to-transparent"
-      />
     </section>
   );
 }
