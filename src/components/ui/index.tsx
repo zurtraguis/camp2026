@@ -8,27 +8,24 @@ import type {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-/* Primitivos de UI — identidade RAIZ, acessíveis (WCAG AA). */
-
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 const buttonBase =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-condensed font-semibold uppercase tracking-wide transition-colors disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2";
+  "inline-flex items-center justify-center gap-2 rounded-sm font-condensed font-bold uppercase tracking-[0.18em] transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    "bg-verde-limao text-[#0b0b0a] hover:bg-[#b6f23c] focus-visible:outline-verde-limao",
+    "border border-verde-limao bg-verde-limao text-[#0b0b0a] shadow-[0_0_22px_rgba(200,255,80,0.26)] hover:bg-[#b6f23c] focus-visible:outline-verde-limao",
   secondary:
-    "border border-border bg-surface text-creme hover:bg-surface-2 focus-visible:outline-creme",
+    "border border-verde-limao/55 bg-[#0b0b0a]/60 text-verde-limao hover:bg-verde-limao hover:text-[#0b0b0a] focus-visible:outline-verde-limao",
   ghost: "text-creme hover:bg-surface focus-visible:outline-creme",
   danger: "bg-danger text-[#0b0b0a] hover:opacity-90 focus-visible:outline-danger",
 };
 
 const buttonSizes = {
-  // h-10 (40px) mínimo p/ alvo de toque (WCAG 2.2 SC 2.5.8).
-  sm: "h-10 px-3 text-sm",
+  sm: "h-10 px-3 text-xs",
   md: "h-11 px-5 text-sm",
-  lg: "h-13 px-7 text-base py-3",
+  lg: "min-h-13 px-7 py-3 text-base",
 } as const;
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -80,19 +77,9 @@ export function Card({
   className?: string;
   children: ReactNode;
 }) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-surface/80 p-6 backdrop-blur-sm",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+  return <div className={cn("root-card p-6 backdrop-blur-sm", className)}>{children}</div>;
 }
 
-/** Campo de formulário com label, dica, erro e associação a11y. */
 export function Field({
   label,
   htmlFor,
@@ -124,8 +111,6 @@ export function Field({
         </p>
       )}
       {children}
-      {/* Sem role="alert" no erro inline: o resumo aria-live do formulário já
-          anuncia; o erro é associado ao campo via aria-describedby (lido no foco). */}
       {error && (
         <p id={errId} className="text-xs font-medium text-danger">
           {error}
@@ -136,7 +121,7 @@ export function Field({
 }
 
 const controlBase =
-  "w-full rounded-lg border border-border bg-surface-2 px-3 py-2.5 text-creme placeholder:text-muted/60 focus:border-verde-limao focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-limao/40";
+  "w-full rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/70 px-3 py-2.5 text-creme placeholder:text-muted/60 focus:border-verde-limao focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-limao/40";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(controlBase, props.className)} {...props} />;
@@ -169,7 +154,7 @@ export function Checkbox({
         <input
           id={id}
           type="checkbox"
-          className="mt-0.5 h-5 w-5 shrink-0 rounded border-border bg-surface-2 accent-verde-limao"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded-sm border-border bg-surface-2 accent-verde-limao"
           aria-describedby={
             [hint ? `${id}-hint` : null, error ? `${id}-error` : null]
               .filter(Boolean)
@@ -212,7 +197,7 @@ export function Callout({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("rounded-xl border p-4 text-sm", calloutTones[tone])}>
+    <div className={cn("rounded-sm border p-4 text-sm", calloutTones[tone])}>
       {title && <p className="mb-1 font-semibold">{title}</p>}
       {children}
     </div>
@@ -229,7 +214,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-creme",
+        "inline-flex items-center rounded-sm border border-verde-limao/25 bg-[#0b0b0a]/50 px-2.5 py-0.5 font-condensed text-xs font-bold uppercase tracking-[0.16em] text-creme",
         className,
       )}
     >

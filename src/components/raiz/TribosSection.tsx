@@ -2,38 +2,34 @@ const tribos = [
   {
     nome: "Ágape",
     significado: "Amor",
-    grego: "ἀγάπη",
     descricao:
       "Amor incondicional que não depende de retribuição. A raiz de tudo o que nasce verdadeiro.",
     cor: "#C8FF50",
-    corTexto: "#0b0b0a",
+    icon: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z M12 13v7 M8 16h8",
   },
   {
     nome: "Eirene",
     significado: "Paz",
-    grego: "εἰρήνη",
     descricao:
-      "Paz que ultrapassa o entendimento — inteira, restaurada, sem fratura entre o que você é e o que aparenta.",
+      "Paz que ultrapassa o entendimento, inteira e restaurada entre o que você é e o que aparenta.",
     cor: "#A8B92B",
-    corTexto: "#0b0b0a",
+    icon: "M12 3c2.8 2 5 4.7 5 8.5 0 5-5 8.5-5 8.5s-5-3.5-5-8.5C7 7.7 9.2 5 12 3z M12 9v11 M8.5 13.5h7",
   },
   {
     nome: "Pistis",
     significado: "Fidelidade",
-    grego: "πίστις",
     descricao:
       "Fé que se mantém mesmo quando o solo está seco. A raiz que segura quando o vento força.",
     cor: "#FFD533",
-    corTexto: "#0b0b0a",
+    icon: "M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z M9 12h6 M12 9v6",
   },
   {
     nome: "Chara",
     significado: "Alegria",
-    grego: "χαρά",
     descricao:
-      "Alegria que não é superficial — é fruto de profundidade, não de circunstância.",
+      "Alegria que não é superficial. É fruto de profundidade, não de circunstância.",
     cor: "#9C6B2E",
-    corTexto: "#f5f0e8",
+    icon: "M12 21V9 M12 9c-4 0-6-2-7-5 4 0 7 2 7 5z M12 9c4 0 6-2 7-5-4 0-7 2-7 5z",
   },
 ] as const;
 
@@ -42,76 +38,68 @@ export function TribosSection() {
     <section
       id="tribos"
       aria-labelledby="tribos-heading"
-      className="bg-surface/30 px-4 py-20 sm:px-6 sm:py-28"
+      className="raiz-section px-4 py-20 sm:px-6 sm:py-28"
     >
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
+      <div className="relative mx-auto max-w-6xl">
         <div className="mb-14 text-center">
-          <p className="mb-2 font-condensed text-xs font-semibold uppercase tracking-[0.2em] text-verde-limao">
-            Reveladas no sábado
-          </p>
+          <p className="raiz-kicker">Serão reveladas perto do acamp</p>
           <h2
             id="tribos-heading"
-            className="font-display text-4xl text-creme sm:text-5xl"
+            className="stone-title mt-3 font-display text-6xl leading-none sm:text-8xl"
           >
-            AS 4 TRIBOS
+            As <span className="brush-accent">4</span> tribos
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base text-muted">
-            Baseadas nos frutos do Espírito de Gálatas 5.22-23. Você descobre a
-            sua no sábado — e leva pra vida.
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-creme/78">
+            Baseadas nos frutos do Espírito de Gálatas 5.22-23. Cada tribo
+            carrega uma marca para viver durante o acampamento.
           </p>
         </div>
 
-        {/* Tribo cards */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {tribos.map((t) => (
             <article
               key={t.nome}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-transform hover:-translate-y-1"
-              aria-label={`Tribo ${t.nome} — ${t.significado}`}
+              className="root-card group flex min-h-[27rem] flex-col items-center overflow-hidden p-7 text-center transition-transform hover:-translate-y-1"
+              aria-label={`Tribo ${t.nome} - ${t.significado}`}
+              style={{ borderColor: `${t.cor}66` }}
             >
-              {/* Color bar */}
               <div
                 aria-hidden="true"
-                className="h-2 w-full"
+                className="absolute inset-x-0 top-0 h-2"
                 style={{ backgroundColor: t.cor }}
               />
-
-              <div className="flex flex-1 flex-col gap-3 p-6">
-                {/* Greek */}
-                <p
-                  aria-hidden="true"
-                  className="font-condensed text-2xl font-bold text-border/40 select-none"
-                >
-                  {t.grego}
-                </p>
-
-                {/* Name + meaning badge */}
-                <div>
-                  <h3 className="font-display text-3xl text-creme">
-                    {t.nome}
-                  </h3>
-                  <span
-                    className="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide"
-                    style={{ backgroundColor: t.cor, color: t.corTexto }}
-                  >
-                    {t.significado}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <p className="text-sm leading-relaxed text-creme/70">
-                  {t.descricao}
-                </p>
-              </div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="mt-7 h-24 w-24"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.45"
+                style={{ color: t.cor }}
+              >
+                <path d={t.icon} />
+              </svg>
+              <h3 className="stone-title mt-8 font-display text-5xl leading-none">
+                {t.nome}
+              </h3>
+              <span
+                className="mt-3 rounded-sm px-4 py-1 font-condensed text-lg font-bold uppercase tracking-wide text-[#0b0b0a]"
+                style={{ backgroundColor: t.cor }}
+              >
+                {t.significado}
+              </span>
+              <p className="mt-7 text-base leading-relaxed text-creme/78">
+                {t.descricao}
+              </p>
             </article>
           ))}
         </div>
 
-        <p className="mt-8 text-center text-xs text-muted">
-          Gálatas 5.22-23 — “O fruto do Espírito é: amor, alegria, paz,
-          paciência, amabilidade, bondade, fidelidade, mansidão e
-          autocontrole.”
+        <p className="mx-auto mt-10 max-w-4xl text-center text-sm leading-relaxed text-creme/65">
+          Gálatas 5.22-23 - &quot;O fruto do Espírito é: amor, alegria, paz,
+          paciência, amabilidade, bondade, fidelidade, mansidão e autocontrole.&quot;
         </p>
       </div>
     </section>

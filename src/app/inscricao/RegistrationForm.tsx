@@ -5,7 +5,6 @@ import type { ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 import {
   Button,
-  Card,
   Field,
   Input,
   Select,
@@ -118,10 +117,10 @@ function SubmitButton({ label }: { label: string }) {
 }
 
 /* ─── Step indicator ─── */
-function StepIndicator({ current, total }: { current: Step; total: number }) {
+function StepIndicator({ current }: { current: Step }) {
   return (
     <nav aria-label="Etapas do formulário" className="mb-8">
-      <ol className="flex items-center justify-between gap-1">
+      <ol className="flex items-start justify-between gap-2">
         {STEPS.map((label, i) => {
           const done = i < current;
           const active = i === current;
@@ -133,12 +132,12 @@ function StepIndicator({ current, total }: { current: Step; total: number }) {
             >
               <div
                 className={[
-                  "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors",
+                  "flex h-12 w-12 items-center justify-center rounded-full border font-display text-xl transition-colors",
                   active
-                    ? "bg-verde-limao text-[#0b0b0a]"
+                    ? "border-verde-limao bg-verde-limao text-[#0b0b0a]"
                     : done
-                      ? "bg-verde-folha/40 text-verde-folha"
-                      : "bg-surface-2 text-muted",
+                      ? "border-verde-limao/35 bg-verde-limao/25 text-verde-limao"
+                      : "border-verde-limao/10 bg-[#242015]/80 text-creme/70",
                 ].join(" ")}
                 aria-hidden="true"
               >
@@ -146,7 +145,7 @@ function StepIndicator({ current, total }: { current: Step; total: number }) {
               </div>
               <span
                 className={[
-                  "hidden text-center text-[10px] font-condensed uppercase tracking-wide sm:block",
+                  "hidden max-w-36 text-center text-[10px] font-condensed font-bold uppercase tracking-[0.16em] sm:block",
                   active ? "text-verde-limao" : "text-muted",
                 ].join(" ")}
               >
@@ -157,12 +156,12 @@ function StepIndicator({ current, total }: { current: Step; total: number }) {
         })}
       </ol>
       <div
-        className="mt-2 h-1 overflow-hidden rounded-full bg-surface-2"
+        className="mt-4 h-1 overflow-hidden rounded-full bg-[#282315]"
         aria-hidden="true"
       >
         <div
-          className="h-full rounded-full bg-verde-limao transition-all"
-          style={{ width: `${((current + 1) / total) * 100}%` }}
+          className="h-full rounded-full bg-verde-limao"
+          style={{ width: "100%" }}
         />
       </div>
     </nav>
@@ -216,7 +215,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
     const legend = formRef.current?.querySelector<HTMLElement>(
       "fieldset:not([hidden]) > legend",
     );
-    legend?.focus();
+    legend?.focus({ preventScroll: true });
   }, [step]);
 
   /* Only show global error banner when there are errors so aria-live fires */
@@ -227,8 +226,8 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
     !state.ok && state.message && !serverHasFieldErrors ? state.message : null;
 
   return (
-    <Card>
-      <StepIndicator current={step} total={STEPS.length} />
+    <div>
+      <StepIndicator current={step} />
 
       {/* Anúncio de troca de etapa para leitores de tela */}
       <p className="sr-only" aria-live="polite">
@@ -255,7 +254,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
         >
           <legend
             tabIndex={-1}
-            className="mb-5 font-display text-2xl text-verde-limao outline-none"
+            className="mb-6 font-display text-4xl text-verde-limao outline-none sm:text-5xl"
           >
             Dados do Campista
           </legend>
@@ -411,7 +410,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
         >
           <legend
             tabIndex={-1}
-            className="mb-5 font-display text-2xl text-verde-limao outline-none"
+            className="mb-6 font-display text-4xl text-verde-limao outline-none sm:text-5xl"
           >
             Responsável Legal
           </legend>
@@ -600,7 +599,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
         >
           <legend
             tabIndex={-1}
-            className="mb-5 font-display text-2xl text-verde-limao outline-none"
+            className="mb-6 font-display text-4xl text-verde-limao outline-none sm:text-5xl"
           >
             Saúde & Triagem
           </legend>
@@ -721,16 +720,16 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
         >
           <legend
             tabIndex={-1}
-            className="mb-5 font-display text-2xl text-verde-limao outline-none"
+            className="mb-6 font-display text-4xl text-verde-limao outline-none sm:text-5xl"
           >
             Pagamento
           </legend>
 
-          <div className="rounded-xl border border-border bg-surface-2 p-4">
+          <div className="rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/55 p-6">
             <p className="text-xs font-condensed uppercase tracking-widest text-muted">
               {loteName}
             </p>
-            <p className="font-display text-4xl text-verde-limao">
+            <p className="font-display text-[clamp(3.5rem,9vw,5.8rem)] leading-none text-verde-limao">
               {formatBRL(priceCents)}
             </p>
           </div>
@@ -747,7 +746,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
             {/* CARD */}
             <label
               htmlFor="pm_card"
-              className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface-2 p-4 transition-colors has-[:checked]:border-verde-limao/60 has-[:checked]:bg-verde-limao/5"
+              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/90 bg-[#0b0b0a]/55 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
             >
               <input
                 id="pm_card"
@@ -769,7 +768,7 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
             {/* PIX */}
             <label
               htmlFor="pm_pix"
-              className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-surface-2 p-4 transition-colors has-[:checked]:border-verde-limao/60 has-[:checked]:bg-verde-limao/5"
+              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/45 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
             >
               <input
                 id="pm_pix"
@@ -818,7 +817,18 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
             <SubmitButton label="Finalizar inscrição" />
           )}
         </div>
+
+        {step === 3 && (
+          <p className="mx-auto mt-9 max-w-lg text-center text-sm leading-relaxed text-muted">
+            <span aria-hidden="true" className="mr-2 text-verde-limao">
+              ▣
+            </span>
+            Seus dados estão protegidos com segurança de ponta a ponta.
+            <br />
+            Ambiente 100% seguro.
+          </p>
+        )}
       </form>
-    </Card>
+    </div>
   );
 }

@@ -27,7 +27,7 @@ const appUrl =
   "http://localhost:3000";
 const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "Acampamento RAIZ 2026";
 const defaultDescription =
-  "Inscrições do Acampamento RAIZ 2026 — três dias de imersão para adolescentes (12 a 19 anos). Todo fruto revela uma raiz.";
+  "Inscrições do Acampamento RAIZ 2026 - três dias de imersão para adolescentes de 12 a 19 anos. Todo fruto revela uma raiz.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
@@ -68,7 +68,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${inter.variable} ${anton.variable} ${oswald.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-foreground focus:px-4 focus:py-2 focus:text-background"

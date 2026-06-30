@@ -34,11 +34,9 @@ test.describe("raiz smoke", () => {
 
   test("landing: link/botão de inscrição aponta para /inscricao", async ({ page }) => {
     await page.goto("/");
-    // Localiza o primeiro link 'Fazer inscrição' ou 'Inscrição' que aponta para /inscricao
-    const inscricaoLink = page
-      .getByRole("link", { name: /insc[a-zçã]*/i })
-      .filter({ hasText: /insc[a-zçã]*/i })
-      .first();
+    // Home em arte: o CTA é um link de overlay (aria-label "Quero participar")
+    // que aponta para /inscricao. Localiza pelo href, robusto ao design.
+    const inscricaoLink = page.locator('a[href="/inscricao"]').first();
     await expect(inscricaoLink).toBeVisible();
     const href = await inscricaoLink.getAttribute("href");
     expect(href).toMatch(/\/inscricao/);
