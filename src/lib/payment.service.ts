@@ -17,9 +17,11 @@ export async function createCheckoutSession(registrationId: string): Promise<str
   });
   if (!reg || !reg.payment) throw new Error("Inscrição não encontrada.");
 
-  const session = await getStripe().checkout.sessions.create({
+  const stripe = getStripe();
+  const params: Parameters<typeof stripe.checkout.sessions.create>[0] = {
     mode: "payment",
     locale: "pt-BR",
+    payment_method_types: ["card"],
     line_items: [
       {
         quantity: 1,
@@ -37,7 +39,25 @@ export async function createCheckoutSession(registrationId: string): Promise<str
     metadata: { registrationId: reg.id, publicCode: reg.publicCode },
     success_url: `${appUrl}/inscricao/${reg.publicCode}?pago=1`,
     cancel_url: `${appUrl}/inscricao/${reg.publicCode}?cancelado=1`,
-  });
+  };
+
+  // Habilita o parcelamento no cartão (Brasil/BRL). O número máximo de parcelas
+  // (ex.: 3x) é definido no painel da Stripe → Settings → Installments. Se a
+  // conta não tiver parcelamento habilitado, recriamos sem a opção para não
+  // quebrar o checkout de cartão.
+  let session: Awaited<ReturnType<typeof stripe.checkout.sessions.create>>;
+  try {
+    session = await stripe.checkout.sessions.create({
+      ...params,
+      payment_method_options: { card: { installments: { enabled: true } } },
+    });
+  } catch (err) {
+    console.warn(
+      "[stripe] parcelamento indisponível; criando checkout sem installments:",
+      err instanceof Error ? err.message : err,
+    );
+    session = await stripe.checkout.sessions.create(params);
+  }
 
   await db.payment.update({
     where: { id: reg.payment.id },
