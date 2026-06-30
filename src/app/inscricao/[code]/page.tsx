@@ -49,14 +49,13 @@ export default async function RegistrationStatusPage({
   }
 
   return (
-    <main id="main-content" className="mx-auto w-full max-w-xl px-4 py-12">
-      {/* Header */}
-      <header className="mb-8 text-center">
-        <p className="mb-2 text-xs font-condensed uppercase tracking-widest text-verde-folha">
-          Acampamento
-        </p>
-        <h1 className="font-display text-5xl text-creme sm:text-6xl">RAIZ 2026</h1>
-      </header>
+    <main
+      id="main-content"
+      className="inscricao-feita-scene relative min-h-screen overflow-hidden px-4 pb-16 pt-[min(23vw,23rem)] text-creme sm:px-6"
+    >
+      <div className="relative mx-auto w-full max-w-xl">
+      {/* O título "RAIZ 2026 — Todo fruto revela uma raiz" vem da própria arte
+          de fundo (inscricao-feita-bg.webp); por isso não renderizamos header. */}
 
       {/* Stripe cancelled note */}
       {sp.cancelado && (
@@ -96,12 +95,12 @@ export default async function RegistrationStatusPage({
         </div>
 
         {/* Tribo — sorteio interno; revelação ao campista acontecerá depois */}
-        <div className="rounded-xl border border-verde-folha/30 bg-verde-folha/5 p-4">
+        <div className="rounded-xl border border-verde-limao/30 bg-verde-limao/5 p-4">
           <p className="text-xs font-condensed uppercase tracking-widest text-muted">
             Sua tribo
           </p>
           <p className="font-display text-3xl text-verde-limao">
-            Será revelada em breve <span aria-hidden="true">🌱</span>
+            Será revelada em breve
           </p>
           <p className="mt-0.5 text-sm text-muted">
             O sorteio das tribos será anunciado pela organização mais perto do
@@ -180,6 +179,7 @@ export default async function RegistrationStatusPage({
           </>
         )}
       </Card>
+      </div>
     </main>
   );
 }

@@ -237,6 +237,8 @@ html {
 
 .registration-scene::before,
 .registration-scene::after,
+.inscricao-feita-scene::before,
+.inscricao-feita-scene::after,
 .registration-header-art::before,
 .registration-header-art::after {
   content: "";
@@ -245,17 +247,29 @@ html {
 }
 
 /* Vinheta suave para dar profundidade SEM cobrir a arte de fundo. */
-.registration-scene::before {
+.registration-scene::before,
+.inscricao-feita-scene::before {
   inset: 0;
   background-image:
     radial-gradient(120% 60% at 50% 100%, rgba(0, 0, 0, 0.55), transparent 60%);
   opacity: 0.5;
 }
 
-.registration-scene::after {
+.registration-scene::after,
+.inscricao-feita-scene::after {
   inset: auto 0 0;
   height: 14rem;
   background: linear-gradient(180deg, transparent, #070706 92%);
+}
+
+/* Cena da página "inscrição feita" — arte de fundo paisagem (16:9) com RAIZ +
+   tagline no topo; o conteúdo (card) fica abaixo da tagline via padding-top. */
+.inscricao-feita-scene {
+  background-color: #070706;
+  background-image: url("/raiz-art/inscricao-feita-bg.webp");
+  background-position: top center;
+  background-repeat: no-repeat;
+  background-size: min(100%, 1672px) auto;
 }
 
 /* O cabeçalho (RAIZ + tagline) e os raios de luz agora vêm da própria arte de
