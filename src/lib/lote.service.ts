@@ -11,21 +11,18 @@ export type { ActiveLote } from "@/lib/lotes";
  * (reserva a vaga enquanto o pagamento é processado/revisado).
  */
 export async function getActiveLote(): Promise<ActiveLote | null> {
-  const lotes = await db.lote.findMany({
-    where: { active: true },
-    orderBy: { order: "asc" },
-  });
-  const sold = await db.registration.count({
-    where: { status: { not: "CANCELLED" } },
-  });
+  const [lotes, sold] = await Promise.all([
+    db.lote.findMany({ where: { active: true }, orderBy: { order: "asc" } }),
+    db.registration.count({ where: { status: { not: "CANCELLED" } } }),
+  ]);
   return resolveActiveLote(lotes, sold);
 }
 
 export async function listLotes() {
-  const lotes = await db.lote.findMany({ orderBy: { order: "asc" } });
-  const sold = await db.registration.count({
-    where: { status: { not: "CANCELLED" } },
-  });
+  const [lotes, sold] = await Promise.all([
+    db.lote.findMany({ orderBy: { order: "asc" } }),
+    db.registration.count({ where: { status: { not: "CANCELLED" } } }),
+  ]);
   let cumulative = 0;
   return lotes.map((l) => {
     const start = cumulative;

@@ -95,8 +95,16 @@ export async function POST(req: Request) {
     // Falha ao processar → 500 para o Stripe reentregar (a idempotência já
     // registrou o evento; ver nota abaixo).
     console.error("Erro ao processar evento Stripe:", err);
-    // Remove o registro de idempotência para permitir o reprocessamento.
-    await db.stripeEvent.delete({ where: { id: event.id } }).catch(() => {});
+    // Remove o registro de idempotência para permitir o reprocessamento. Se o
+    // delete falhar, a reentrega do Stripe cairia na guarda de duplicata e o
+    // evento nunca seria reprocessado — por isso a falha precisa ficar visível.
+    await db.stripeEvent.delete({ where: { id: event.id } }).catch((delErr) => {
+      console.error(
+        `[stripe] FALHA ao liberar idempotência do evento ${event.id} — ` +
+          "reentregas serão ignoradas como duplicata; intervenção manual necessária:",
+        delErr,
+      );
+    });
     return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 

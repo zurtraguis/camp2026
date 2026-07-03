@@ -85,8 +85,10 @@ export async function confirmCardPaymentBySession(
   });
   if (!payment || payment.status === "CONFIRMED") return;
   await db.$transaction([
-    db.payment.update({
-      where: { id: payment.id },
+    // updateMany condicional: se outro evento concorrente já confirmou entre a
+    // leitura acima e este ponto, o update vira no-op em vez de regravar.
+    db.payment.updateMany({
+      where: { id: payment.id, status: { not: "CONFIRMED" } },
       data: {
         status: "CONFIRMED",
         stripePaymentIntentId: paymentIntentId ?? payment.stripePaymentIntentId,
@@ -134,11 +136,20 @@ export async function getPixDisplay(publicCode: string): Promise<PixDisplay> {
   return { ...base, payload, qrDataUrl };
 }
 
+/* O QR é determinístico por (valor, txid, chave) e a página é force-dynamic:
+ * sem cache, cada visita regenera o mesmo data URL. */
+const pixQrCache = new Map<string, { payload: string; qrDataUrl: string }>();
+const PIX_QR_CACHE_MAX = 1000;
+
 /** Monta o "copia e cola" + QR (data URL) do Pix para um valor/txid. */
 async function buildPixQr(
   amountCents: number,
   txid: string,
 ): Promise<{ payload: string; qrDataUrl: string }> {
+  const cacheKey = `${env.NEXT_PUBLIC_PIX_KEY}|${amountCents}|${txid}`;
+  const cached = pixQrCache.get(cacheKey);
+  if (cached) return cached;
+
   const payload = buildPixPayload({
     key: env.NEXT_PUBLIC_PIX_KEY as string,
     receiverName: env.NEXT_PUBLIC_PIX_RECEIVER_NAME,
@@ -147,7 +158,11 @@ async function buildPixQr(
     txid,
   });
   const qrDataUrl = await QRCode.toDataURL(payload, { margin: 1, width: 280 });
-  return { payload, qrDataUrl };
+
+  if (pixQrCache.size >= PIX_QR_CACHE_MAX) pixQrCache.clear();
+  const result = { payload, qrDataUrl };
+  pixQrCache.set(cacheKey, result);
+  return result;
 }
 
 /** Uma parcela do carnê, com o Pix pronto para exibir. */
@@ -288,51 +303,53 @@ export async function reviewInstallment(
   adminId: string,
   note?: string,
 ): Promise<void> {
-  const inst = await db.installment.findUnique({
-    where: { id: installmentId },
-    include: { payment: { include: { installments: true } } },
-  });
-  if (!inst || !inst.payment) throw new Error("Parcela não encontrada.");
-
   const confirmed = decision === "confirm";
 
-  // Estado das demais parcelas + esta recém-confirmada.
-  const confirmedCount =
-    inst.payment.installments.filter(
-      (i) => i.id !== installmentId && i.status === "CONFIRMED",
-    ).length + (confirmed ? 1 : 0);
-  const total = inst.payment.installmentsTotal ?? inst.payment.installments.length;
-  const allPaid = confirmed && confirmedCount >= total;
+  // Transação interativa serializável: o estado das outras parcelas é lido
+  // DENTRO da tx — duas confirmações simultâneas não podem mais calcular
+  // "todas pagas" sobre dados antigos e deixar o pagamento pendurado.
+  await db.$transaction(
+    async (tx) => {
+      const inst = await tx.installment.findUnique({
+        where: { id: installmentId },
+        include: { payment: { include: { installments: true } } },
+      });
+      if (!inst || !inst.payment) throw new Error("Parcela não encontrada.");
 
-  await db.$transaction([
-    db.installment.update({
-      where: { id: installmentId },
-      data: {
-        status: confirmed ? "CONFIRMED" : "FAILED",
-        reviewedById: adminId,
-        reviewedAt: new Date(),
-        reviewNote: note ?? null,
-      },
-    }),
-    // Vaga garantida a partir da 1ª parcela paga.
-    ...(confirmed
-      ? [
-          db.registration.update({
-            where: { id: inst.payment.registrationId },
-            data: { status: "CONFIRMED" as const },
-          }),
-        ]
-      : []),
-    // Pagamento inteiro só quita quando todas as parcelas estão confirmadas.
-    ...(allPaid
-      ? [
-          db.payment.update({
-            where: { id: inst.payment.id },
-            data: { status: "CONFIRMED" as const },
-          }),
-        ]
-      : []),
-  ]);
+      await tx.installment.update({
+        where: { id: installmentId },
+        data: {
+          status: confirmed ? "CONFIRMED" : "FAILED",
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+          reviewNote: note ?? null,
+        },
+      });
+
+      if (!confirmed) return;
+
+      // Vaga garantida a partir da 1ª parcela paga.
+      await tx.registration.update({
+        where: { id: inst.payment.registrationId },
+        data: { status: "CONFIRMED" },
+      });
+
+      // Pagamento inteiro só quita quando todas as parcelas estão confirmadas.
+      const confirmedCount =
+        inst.payment.installments.filter(
+          (i) => i.id !== installmentId && i.status === "CONFIRMED",
+        ).length + 1;
+      const total =
+        inst.payment.installmentsTotal ?? inst.payment.installments.length;
+      if (confirmedCount >= total) {
+        await tx.payment.update({
+          where: { id: inst.payment.id },
+          data: { status: "CONFIRMED" },
+        });
+      }
+    },
+    { isolationLevel: "Serializable" },
+  );
 }
 
 /** Admin confirma ou rejeita um comprovante Pix. */

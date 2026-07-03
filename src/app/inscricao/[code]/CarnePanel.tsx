@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { useFormStatus } from "react-dom";
 import { Button, Callout, Field, Badge } from "@/components/ui";
 import { formatBRL } from "@/lib/format";
@@ -36,6 +37,9 @@ export interface CarnePanelProps {
   totalCents: number;
   installments: CarneInstallmentView[];
 }
+
+/* Store estático para detectar o cliente via useSyncExternalStore. */
+const subscribeNoop = () => () => {};
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR", {
@@ -109,13 +113,13 @@ function InstallmentCard({
   }
 
   return (
-    <div className="carne-card rounded-xl border border-border bg-surface-2 p-4">
+    <div className="rounded-xl border border-border bg-surface-2 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-condensed uppercase tracking-widest text-muted">
             Parcela {inst.number}
           </p>
-          <p className="print-accent font-display text-2xl text-verde-limao">
+          <p className="font-display text-2xl text-verde-limao">
             {formatBRL(inst.amountCents)}
           </p>
           <p className="text-xs text-muted">Vencimento: {fmtDate(inst.dueDate)}</p>
@@ -144,7 +148,6 @@ function InstallmentCard({
                 width={180}
                 height={180}
                 className="rounded-lg border border-border bg-white p-2"
-                style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}
               />
             </div>
           )}
@@ -157,7 +160,7 @@ function InstallmentCard({
               </p>
               <div className="flex gap-2">
                 <div className="flex-1 overflow-hidden rounded-lg border border-border bg-surface-1 px-3 py-2">
-                  <p className="print-code truncate font-mono text-xs text-muted">
+                  <p className="truncate font-mono text-xs text-muted">
                     {inst.payload}
                   </p>
                 </div>
@@ -167,7 +170,6 @@ function InstallmentCard({
                   size="sm"
                   onClick={copyPayload}
                   aria-label={`Copiar código Pix da parcela ${inst.number}`}
-                  className="no-print"
                 >
                   {copied ? "Copiado!" : "Copiar"}
                 </Button>
@@ -176,7 +178,7 @@ function InstallmentCard({
           )}
 
           {/* Upload do comprovante desta parcela */}
-          <div className="no-print" aria-live="polite" aria-atomic="true">
+          <div aria-live="polite" aria-atomic="true">
             {uploadState.ok && (
               <Callout tone="success" title="Comprovante enviado!">
                 {uploadState.message}
@@ -188,7 +190,7 @@ function InstallmentCard({
           </div>
 
           {!uploadState.ok && (
-            <form action={uploadAction} className="no-print space-y-3">
+            <form action={uploadAction} className="space-y-3">
               <input type="hidden" name="code" value={code} />
               <input type="hidden" name="number" value={inst.number} />
               <Field
@@ -205,13 +207,312 @@ function InstallmentCard({
                   required
                   aria-required="true"
                   className="w-full cursor-pointer rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-creme file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-verde-limao/10 file:px-3 file:py-1 file:text-xs file:font-medium file:text-verde-limao hover:file:bg-verde-limao/20"
-                />
+              />
               </Field>
               <UploadButton />
             </form>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Documento de impressão do carnê.
+ *
+ * Renderizado via portal como filho direto do <body>: o truque anterior
+ * (visibility:hidden + position:absolute dentro de um ancestral com
+ * overflow:hidden) fazia o Chrome cortar tudo após a 1ª página. Como filho
+ * direto do body, escondemos os irmãos com display:none e o carnê flui
+ * naturalmente por quantas páginas precisar.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const PRINT_CSS = `
+  #carne-print-doc { display: none; }
+
+  @media print {
+    @page { size: A4; margin: 12mm; }
+    body > *:not(#carne-print-doc) { display: none !important; }
+    body { background: #fff !important; }
+    #carne-print-doc {
+      display: block !important;
+      color: #16210c;
+      font-family: var(--font-inter), system-ui, sans-serif;
+      font-size: 11px;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    #carne-print-doc .cp-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 3px solid #2f6b00;
+      padding-bottom: 10px;
+    }
+    #carne-print-doc .cp-brand {
+      font-family: var(--font-oswald), system-ui, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #2f6b00;
+    }
+    #carne-print-doc .cp-title {
+      font-family: var(--font-anton), system-ui, sans-serif;
+      font-size: 26px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #16210c;
+    }
+    #carne-print-doc .cp-header-total { text-align: right; }
+    #carne-print-doc .cp-total {
+      font-family: var(--font-anton), system-ui, sans-serif;
+      font-size: 22px;
+      color: #2f6b00;
+    }
+
+    #carne-print-doc .cp-label {
+      font-family: var(--font-oswald), system-ui, sans-serif;
+      font-size: 8.5px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #6b7360;
+    }
+    #carne-print-doc .cp-value { font-size: 11.5px; font-weight: 600; }
+    #carne-print-doc .cp-mono {
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    }
+
+    #carne-print-doc .cp-meta {
+      display: grid;
+      grid-template-columns: repeat(4, auto);
+      justify-content: space-between;
+      gap: 8px 20px;
+      padding: 10px 0 14px;
+    }
+
+    /* ── Voucher de parcela ── */
+    #carne-print-doc .cp-voucher {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 14px;
+    }
+    #carne-print-doc .cp-cut {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #9aa18f;
+      font-size: 9px;
+      margin-bottom: 4px;
+    }
+    #carne-print-doc .cp-cut::after {
+      content: "";
+      flex: 1;
+      border-top: 1.5px dashed #9aa18f;
+    }
+    #carne-print-doc .cp-voucher-body {
+      display: flex;
+      border: 1.5px solid #2f6b00;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    /* Canhoto (esquerda) */
+    #carne-print-doc .cp-stub {
+      width: 34%;
+      border-right: 1.5px dashed #9aa18f;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    #carne-print-doc .cp-parcela-num {
+      font-family: var(--font-oswald), system-ui, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #2f6b00;
+      font-weight: 600;
+    }
+    #carne-print-doc .cp-amount {
+      font-family: var(--font-anton), system-ui, sans-serif;
+      font-size: 24px;
+      color: #16210c;
+    }
+
+    /* Área de pagamento (direita) */
+    #carne-print-doc .cp-pay {
+      flex: 1;
+      display: flex;
+      gap: 14px;
+      padding: 12px 14px;
+      align-items: flex-start;
+    }
+    #carne-print-doc .cp-qr {
+      width: 118px;
+      height: 118px;
+      flex-shrink: 0;
+      border: 1px solid #d5dbc9;
+      border-radius: 6px;
+      background: #fff !important;
+    }
+    #carne-print-doc .cp-paycode { flex: 1; min-width: 0; }
+    #carne-print-doc .cp-code {
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 8.5px;
+      line-height: 1.5;
+      word-break: break-all;
+      border: 1px solid #d5dbc9;
+      border-radius: 6px;
+      padding: 6px 8px;
+      margin-top: 3px;
+      color: #16210c;
+    }
+
+    /* Carimbo de parcela paga / em análise */
+    #carne-print-doc .cp-stamp {
+      align-self: center;
+      margin: 14px auto;
+      border: 3px solid #2f6b00;
+      border-radius: 8px;
+      color: #2f6b00;
+      font-family: var(--font-anton), system-ui, sans-serif;
+      font-size: 20px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 8px 22px;
+      transform: rotate(-6deg);
+    }
+    #carne-print-doc .cp-stamp--review {
+      border-color: #8a6d00;
+      color: #8a6d00;
+    }
+
+    #carne-print-doc .cp-footer {
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid #d5dbc9;
+      color: #6b7360;
+      font-size: 9.5px;
+    }
+  }
+`;
+
+function CarnePrintDoc({
+  camperName,
+  publicCode,
+  pixKey,
+  receiverName,
+  totalCents,
+  installments,
+}: Omit<CarnePanelProps, "code" | "configured">) {
+  const paidCount = installments.filter((i) => i.status === "CONFIRMED").length;
+
+  return (
+    <div id="carne-print-doc" aria-hidden="true">
+      <style>{PRINT_CSS}</style>
+
+      <header className="cp-header">
+        <div>
+          <p className="cp-brand">Acampamento RAIZ 2026 · Todo fruto revela uma raiz</p>
+          <h1 className="cp-title">Carnê de pagamento Pix</h1>
+        </div>
+        <div className="cp-header-total">
+          <p className="cp-label">Valor total</p>
+          <p className="cp-total">{formatBRL(totalCents)}</p>
+          <p className="cp-label">
+            {installments.length} parcelas · {paidCount} paga
+            {paidCount === 1 ? "" : "s"}
+          </p>
+        </div>
+      </header>
+
+      <section className="cp-meta">
+        <div>
+          <p className="cp-label">Campista</p>
+          <p className="cp-value">{camperName}</p>
+        </div>
+        <div>
+          <p className="cp-label">Código da inscrição</p>
+          <p className="cp-value cp-mono">{publicCode}</p>
+        </div>
+        <div>
+          <p className="cp-label">Beneficiário</p>
+          <p className="cp-value">{receiverName}</p>
+        </div>
+        <div>
+          <p className="cp-label">Chave Pix</p>
+          <p className="cp-value cp-mono">{pixKey}</p>
+        </div>
+      </section>
+
+      {installments.map((inst) => {
+        const isPaid = inst.status === "CONFIRMED";
+        const inReview = inst.status === "AWAITING_REVIEW";
+        return (
+          <article className="cp-voucher" key={inst.id}>
+            <p className="cp-cut">✂</p>
+            <div className="cp-voucher-body">
+              <div className="cp-stub">
+                <p className="cp-parcela-num">
+                  Parcela {inst.number} de {installments.length}
+                </p>
+                <p className="cp-amount">{formatBRL(inst.amountCents)}</p>
+                <div>
+                  <p className="cp-label">Vencimento</p>
+                  <p className="cp-value">{fmtDate(inst.dueDate)}</p>
+                </div>
+                <div>
+                  <p className="cp-label">Campista</p>
+                  <p className="cp-value">{camperName}</p>
+                </div>
+                <div>
+                  <p className="cp-label">Identificador</p>
+                  <p className="cp-value cp-mono">{inst.txid}</p>
+                </div>
+              </div>
+
+              <div className="cp-pay">
+                {isPaid ? (
+                  <p className="cp-stamp">Paga ✓</p>
+                ) : inReview ? (
+                  <p className="cp-stamp cp-stamp--review">Em análise</p>
+                ) : (
+                  <>
+                    {inst.qrDataUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        className="cp-qr"
+                        src={inst.qrDataUrl}
+                        alt={`QR code Pix da parcela ${inst.number}`}
+                        width={118}
+                        height={118}
+                      />
+                    )}
+                    <div className="cp-paycode">
+                      <p className="cp-label">
+                        Pague pelo QR code ou Pix copia e cola
+                      </p>
+                      <p className="cp-code">{inst.payload ?? "—"}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </article>
+        );
+      })}
+
+      <footer className="cp-footer">
+        Pague cada parcela até o vencimento pelo QR code ou código Pix copia e
+        cola e envie o comprovante na página da sua inscrição. A equipe confirma
+        em até 24 h úteis. Sua vaga fica garantida desde a confirmação da 1ª
+        parcela.
+      </footer>
     </div>
   );
 }
@@ -226,6 +527,13 @@ export function CarnePanel({
   totalCents,
   installments,
 }: CarnePanelProps) {
+  /* O portal só existe no cliente; evita mismatch de hidratação. */
+  const mounted = useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
+
   if (!configured) {
     return (
       <Callout tone="warning" title="Chave Pix não configurada">
@@ -239,52 +547,6 @@ export function CarnePanel({
 
   return (
     <section aria-labelledby="carne-heading" className="space-y-5">
-      {/* Regras de impressão: mostra só o carnê, em papel branco, com texto
-          escuro legível (os tokens do tema são claros e sumiriam no branco). */}
-      <style>{`
-        @media print {
-          @page { margin: 14mm; }
-          body * { visibility: hidden !important; }
-          #carne-print, #carne-print * { visibility: visible !important; }
-          #carne-print {
-            position: absolute; left: 0; top: 0; width: 100%;
-            background: #fff !important; color: #111 !important;
-          }
-          /* Força legibilidade: texto escuro, sem fundos/realces do tema. */
-          #carne-print * {
-            color: #1a1a1a !important;
-            background: transparent !important;
-            border-color: #bbb !important;
-            box-shadow: none !important;
-          }
-          /* Mantém um acento de marca com contraste em papel. */
-          #carne-print .print-accent { color: #2f6b00 !important; }
-          #carne-print .carne-card {
-            border: 1px solid #999 !important;
-            border-radius: 8px;
-            padding: 12px !important;
-            margin-bottom: 10px;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          /* Na impressão, o Pix copia-e-cola aparece inteiro (sem "…"),
-             senão o código impresso fica inutilizável. */
-          #carne-print .print-code {
-            overflow: visible !important;
-            white-space: normal !important;
-            word-break: break-all !important;
-            text-overflow: clip !important;
-          }
-          /* O QR é imagem branca — garante a impressão fiel. */
-          #carne-print img {
-            background: #fff !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          #carne-print .no-print { display: none !important; }
-        }
-      `}</style>
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="carne-heading" className="font-display text-2xl text-verde-limao">
           Carnê Pix — {installments.length}x
@@ -294,45 +556,52 @@ export function CarnePanel({
           variant="secondary"
           size="sm"
           onClick={() => window.print()}
-          className="no-print"
         >
           Imprimir carnê
         </Button>
       </div>
 
-      <div id="carne-print" className="space-y-5">
-        {/* Cabeçalho do carnê (aparece na impressão) */}
-        <div className="carne-card rounded-xl border border-verde-limao/30 bg-verde-limao/5 px-5 py-4">
-          <p className="print-accent text-xs font-condensed uppercase tracking-widest text-muted">
-            Carnê Acampamento RAIZ 2026
-          </p>
-          <p className="font-display text-xl text-creme">{camperName}</p>
-          <p className="mt-1 text-xs text-muted">
-            Código <span className="font-mono text-creme">{publicCode}</span> ·
-            Beneficiário: <span className="text-creme">{receiverName}</span> ·
-            Chave Pix: <span className="font-mono text-creme">{pixKey}</span>
-          </p>
-          <p className="mt-2 text-sm text-creme">
-            Total:{" "}
-            <span className="print-accent text-verde-limao">
-              {formatBRL(totalCents)}
-            </span>{" "}
-            em {installments.length}x · {paidCount} de {installments.length} pago
-            {paidCount === 1 ? "" : "s"}
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          {installments.map((inst) => (
-            <InstallmentCard key={inst.id} code={code} inst={inst} />
-          ))}
-        </div>
-
-        <p className="text-[11px] leading-snug text-muted">
-          Pague cada parcela pelo QR/código Pix e envie o comprovante. A equipe
-          confirma em até 24 h úteis. Sua vaga já está garantida desde a 1ª parcela.
+      <div className="rounded-xl border border-verde-limao/30 bg-verde-limao/5 px-5 py-4">
+        <p className="text-xs font-condensed uppercase tracking-widest text-muted">
+          Carnê Acampamento RAIZ 2026
+        </p>
+        <p className="font-display text-xl text-creme">{camperName}</p>
+        <p className="mt-1 text-xs text-muted">
+          Código <span className="font-mono text-creme">{publicCode}</span> ·
+          Beneficiário: <span className="text-creme">{receiverName}</span> ·
+          Chave Pix: <span className="font-mono text-creme">{pixKey}</span>
+        </p>
+        <p className="mt-2 text-sm text-creme">
+          Total:{" "}
+          <span className="text-verde-limao">{formatBRL(totalCents)}</span> em{" "}
+          {installments.length}x · {paidCount} de {installments.length} pago
+          {paidCount === 1 ? "" : "s"}
         </p>
       </div>
+
+      <div className="space-y-4">
+        {installments.map((inst) => (
+          <InstallmentCard key={inst.id} code={code} inst={inst} />
+        ))}
+      </div>
+
+      <p className="text-[11px] leading-snug text-muted">
+        Pague cada parcela pelo QR/código Pix e envie o comprovante. A equipe
+        confirma em até 24 h úteis. Sua vaga já está garantida desde a 1ª parcela.
+      </p>
+
+      {mounted &&
+        createPortal(
+          <CarnePrintDoc
+            camperName={camperName}
+            publicCode={publicCode}
+            pixKey={pixKey}
+            receiverName={receiverName}
+            totalCents={totalCents}
+            installments={installments}
+          />,
+          document.body,
+        )}
     </section>
   );
 }

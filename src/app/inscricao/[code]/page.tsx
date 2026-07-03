@@ -48,8 +48,8 @@ export default async function RegistrationStatusPage({
   if (isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled) {
     try {
       pixDisplay = await getPixDisplay(code);
-    } catch {
-      /* will show error state */
+    } catch (err) {
+      console.error(`[inscricao/${code}] erro ao montar Pix display:`, err);
     }
   }
 
@@ -58,8 +58,8 @@ export default async function RegistrationStatusPage({
   if (isCarne && !isCancelled) {
     try {
       carneDisplay = await getCarneDisplay(code);
-    } catch {
-      /* will show error state */
+    } catch (err) {
+      console.error(`[inscricao/${code}] erro ao montar o carnê:`, err);
     }
   }
   const carneAllPaid =
