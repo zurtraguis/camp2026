@@ -80,6 +80,9 @@ export const registrationSchema = z
     paymentMethod: z.enum(["CARD", "PIX"], {
       error: "Selecione a forma de pagamento",
     }),
+    // Parcelas do carnê Pix: 1 = à vista (padrão); 2 ou 3 = carnê parcelado.
+    // Só é permitido parcelar no Pix.
+    installments: z.coerce.number().int().min(1).max(3).default(1),
   })
   .superRefine((data, ctx) => {
     const age = ageOn(new Date(data.birthDate));
@@ -88,6 +91,13 @@ export const registrationSchema = z
         code: z.ZodIssueCode.custom,
         path: ["birthDate"],
         message: `A inscrição é para adolescentes de ${MIN_AGE} a ${MAX_AGE} anos (idade calculada: ${age}).`,
+      });
+    }
+    if (data.installments > 1 && data.paymentMethod !== "PIX") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["installments"],
+        message: "O parcelamento (carnê) está disponível apenas no Pix.",
       });
     }
   });
@@ -101,6 +111,12 @@ export const adminLoginSchema = z.object({
 
 export const pixReviewSchema = z.object({
   paymentId: z.string().min(1),
+  decision: z.enum(["confirm", "reject"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+export const installmentReviewSchema = z.object({
+  installmentId: z.string().min(1),
   decision: z.enum(["confirm", "reject"]),
   note: z.string().trim().max(500).optional(),
 });

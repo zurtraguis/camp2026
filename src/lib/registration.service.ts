@@ -12,6 +12,7 @@ import { ageOn, makePublicCode } from "@/lib/format";
 import type { RegistrationInput } from "@/lib/validation";
 import { env } from "@/lib/env";
 import { getActiveLote } from "@/lib/lote.service";
+import { isCarne, splitInstallments, installmentDueDates } from "@/lib/carne";
 
 export interface CreatedRegistration {
   id: string;
@@ -57,6 +58,23 @@ export async function createRegistration(
       }
       const tribo = chooseTribo(input.gender, age, counts);
       const publicCode = makePublicCode();
+
+      // Carnê Pix parcelado (2x/3x): monta as parcelas (valor + vencimento).
+      // À vista (Pix ou cartão) segue o fluxo de pagamento único.
+      const carne = input.paymentMethod === "PIX" && isCarne(input.installments);
+      const installmentData = carne
+        ? (() => {
+            const amounts = splitInstallments(active.priceCents, input.installments);
+            const dueDates = installmentDueDates(new Date(), input.installments);
+            return amounts.map((amountCents, i) => ({
+              number: i + 1,
+              amountCents,
+              dueDate: dueDates[i],
+              status: "PENDING" as const,
+              pixTxid: `${publicCode}${i + 1}`,
+            }));
+          })()
+        : null;
 
       const registration = await tx.registration.create({
         data: {
@@ -115,6 +133,10 @@ export async function createRegistration(
               amountCents: active.priceCents,
               loteOrder: active.order,
               pixTxid: input.paymentMethod === "PIX" ? publicCode : null,
+              installmentsTotal: carne ? input.installments : null,
+              ...(installmentData
+                ? { installments: { create: installmentData } }
+                : {}),
             },
           },
         },
@@ -136,6 +158,9 @@ export async function createRegistration(
 export async function getRegistrationByCode(publicCode: string) {
   return db.registration.findUnique({
     where: { publicCode },
-    include: { payment: true, lote: true },
+    include: {
+      payment: { include: { installments: { orderBy: { number: "asc" } } } },
+      lote: true,
+    },
   });
 }

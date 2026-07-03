@@ -34,6 +34,8 @@ model User {
 
   // Auditoria: pagamentos Pix revisados por este admin.
   reviewedPayments Payment[] @relation("PaymentReviewer")
+  // Auditoria: parcelas de carnê revisadas por este admin.
+  reviewedInstallments Installment[] @relation("InstallmentReviewer")
 
   @@index([isDemo])
 }
@@ -234,6 +236,12 @@ model Payment {
   amountCents Int
   loteOrder   Int // lote vigente no momento do pagamento (auditoria)
 
+  // Carnê (Pix parcelado). null/1 = à vista; 2 ou 3 = parcelado. Quando > 1,
+  // a fonte de verdade dos pagamentos são as `installments` (uma por parcela);
+  // os campos Pix abaixo (pixReceiptPath etc.) ficam sem uso no carnê.
+  installmentsTotal Int?
+  installments      Installment[]
+
   // Stripe (cartão)
   stripeSessionId       String? @unique
   stripePaymentIntentId String?
@@ -253,4 +261,33 @@ model Payment {
 
   @@index([status])
   @@index([method, status])
+}
+
+// Parcela de um carnê Pix (até 3). Cada parcela tem seu próprio valor,
+// vencimento, comprovante e revisão do admin. A vaga é garantida quando a
+// primeira parcela (number = 1) é confirmada; as demais seguem como pendências.
+model Installment {
+  id        String @id @default(cuid())
+  paymentId String
+
+  number      Int // 1..3 (ordem/sequência da parcela)
+  amountCents Int
+  dueDate     DateTime
+  status      PaymentStatus @default(PENDING)
+
+  // Pix manual (por parcela)
+  pixTxid        String? // referência = publicCode + number
+  pixReceiptPath String? // caminho no bucket privado
+  reviewedById   String?
+  reviewedBy     User?     @relation("InstallmentReviewer", fields: [reviewedById], references: [id])
+  reviewedAt     DateTime?
+  reviewNote     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, number])
+  @@index([status])
 }

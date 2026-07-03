@@ -1,17 +1,29 @@
 "use client";
 
 import { useActionState } from "react";
-import { reviewPixAction, type ReviewState } from "@/app/admin/actions";
+import {
+  reviewPixAction,
+  reviewInstallmentAction,
+  type ReviewState,
+} from "@/app/admin/actions";
 import { Button, Callout, Field, Textarea } from "@/components/ui";
 
 interface ReviewFormProps {
-  paymentId: string;
+  /** Pagamento Pix à vista. */
+  paymentId?: string;
+  /** Parcela de carnê. Quando presente, usa a action de parcela. */
+  installmentId?: string;
 }
 
 const initialState: ReviewState = { ok: false };
 
-export function ReviewForm({ paymentId }: ReviewFormProps) {
-  const [state, action, pending] = useActionState(reviewPixAction, initialState);
+export function ReviewForm({ paymentId, installmentId }: ReviewFormProps) {
+  const isInstallment = Boolean(installmentId);
+  const [state, action, pending] = useActionState(
+    isInstallment ? reviewInstallmentAction : reviewPixAction,
+    initialState,
+  );
+  const id = installmentId ?? paymentId ?? "";
 
   if (state.ok) {
     return (
@@ -23,7 +35,11 @@ export function ReviewForm({ paymentId }: ReviewFormProps) {
 
   return (
     <form action={action} className="space-y-3">
-      <input type="hidden" name="paymentId" value={paymentId} />
+      <input
+        type="hidden"
+        name={isInstallment ? "installmentId" : "paymentId"}
+        value={id}
+      />
 
       {state.message && !state.ok && (
         <Callout tone="danger">{state.message}</Callout>
@@ -31,11 +47,11 @@ export function ReviewForm({ paymentId }: ReviewFormProps) {
 
       <Field
         label="Observação (opcional)"
-        htmlFor={`note-${paymentId}`}
+        htmlFor={`note-${id}`}
         hint="Visível no histórico interno."
       >
         <Textarea
-          id={`note-${paymentId}`}
+          id={`note-${id}`}
           name="note"
           placeholder="Ex: comprovante ilegível, valor incorreto…"
           rows={2}

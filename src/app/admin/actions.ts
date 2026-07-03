@@ -9,8 +9,12 @@ import {
   destroySession,
   requireAdmin,
 } from "@/lib/auth";
-import { adminLoginSchema, pixReviewSchema } from "@/lib/validation";
-import { reviewPixPayment } from "@/lib/payment.service";
+import {
+  adminLoginSchema,
+  pixReviewSchema,
+  installmentReviewSchema,
+} from "@/lib/validation";
+import { reviewPixPayment, reviewInstallment } from "@/lib/payment.service";
 import { rebalance, type Camper, type Gender } from "@/lib/tribos";
 
 export interface LoginState {
@@ -86,6 +90,42 @@ export async function reviewPixAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao revisar.",
+    };
+  }
+}
+
+export async function reviewInstallmentAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const parsed = installmentReviewSchema.safeParse({
+    installmentId: formData.get("installmentId"),
+    decision: formData.get("decision"),
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success) return { ok: false, message: "Dados inválidos." };
+
+  try {
+    await reviewInstallment(
+      parsed.data.installmentId,
+      parsed.data.decision,
+      admin.id,
+      parsed.data.note,
+    );
+    revalidatePath("/admin");
+    revalidatePath("/admin/pagamentos");
+    return {
+      ok: true,
+      message:
+        parsed.data.decision === "confirm"
+          ? "Parcela confirmada."
+          : "Parcela rejeitada.",
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao revisar parcela.",
     };
   }
 }

@@ -13,6 +13,7 @@ import {
   Callout,
 } from "@/components/ui";
 import { TRIAGE_FLAGS, TRIAGE_FLAG_LABELS } from "@/lib/validation";
+import { splitInstallments } from "@/lib/carne";
 import { formatBRL, ageOn, MIN_AGE, MAX_AGE } from "@/lib/format";
 import { createRegistrationAction } from "@/app/inscricao/actions";
 import type { RegistrationFormState } from "@/app/inscricao/actions";
@@ -220,6 +221,11 @@ export function RegistrationForm({
 
   const [step, setStep] = useState<Step>(0);
   const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+  // Forma de pagamento selecionada + parcelas do carnê (só aparece no Pix).
+  const [payMethod, setPayMethod] = useState<"CARD" | "PIX">(
+    cardOnlineEnabled ? "CARD" : "PIX",
+  );
+  const [installments, setInstallments] = useState(1);
   const formRef = useRef<HTMLFormElement>(null);
   const firstRender = useRef(true);
   // Snapshot do que foi enviado: o React reseta o <form action> após a action,
@@ -850,6 +856,7 @@ export function RegistrationForm({
                 name="paymentMethod"
                 value="PIX"
                 defaultChecked={!cardOnlineEnabled}
+                onChange={() => setPayMethod("PIX")}
                 className="mt-0.5 h-5 w-5 shrink-0 accent-verde-limao"
               />
               <div>
@@ -861,6 +868,57 @@ export function RegistrationForm({
                 </p>
               </div>
             </label>
+
+            {/* Carnê Pix — parcelamento em 2x ou 3x (só quando Pix selecionado) */}
+            {payMethod === "PIX" && (
+              <fieldset className="ml-2 space-y-2 border-l border-verde-limao/20 pl-4">
+                <legend className="text-xs font-condensed uppercase tracking-widest text-muted">
+                  Parcelar no carnê?
+                </legend>
+                {(
+                  [
+                    { n: 1, label: "À vista", desc: "Pagamento único" },
+                    { n: 2, label: "2x no carnê", desc: "2 parcelas mensais" },
+                    { n: 3, label: "3x no carnê", desc: "3 parcelas mensais" },
+                  ] as const
+                ).map(({ n, label, desc }) => {
+                  const parts = splitInstallments(priceCents, n);
+                  const per = parts[parts.length - 1];
+                  const first = parts[0];
+                  return (
+                    <label
+                      key={n}
+                      htmlFor={`inst_${n}`}
+                      className="flex cursor-pointer items-center gap-3 rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/40 p-3 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
+                    >
+                      <input
+                        id={`inst_${n}`}
+                        type="radio"
+                        name="installments"
+                        value={n}
+                        checked={installments === n}
+                        onChange={() => setInstallments(n)}
+                        className="h-4 w-4 shrink-0 accent-verde-limao"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-creme">{label}</p>
+                        <p className="text-xs text-muted">
+                          {n === 1
+                            ? desc
+                            : first === per
+                              ? `${desc} de ${formatBRL(per)}`
+                              : `${desc}: 1ª de ${formatBRL(first)} + ${n - 1}x de ${formatBRL(per)}`}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
+                <p className="text-[11px] leading-snug text-muted">
+                  No carnê, a 1ª parcela vence agora e garante sua vaga; as demais
+                  vencem a cada 30 dias. Você paga e envia o comprovante de cada uma.
+                </p>
+              </fieldset>
+            )}
 
             {/* CARD — online (Stripe) quando habilitado; senão, registro para
                 pagamento presencial no crédito/débito. */}
@@ -874,6 +932,10 @@ export function RegistrationForm({
                 name="paymentMethod"
                 value="CARD"
                 defaultChecked={cardOnlineEnabled}
+                onChange={() => {
+                  setPayMethod("CARD");
+                  setInstallments(1);
+                }}
                 className="mt-0.5 h-5 w-5 shrink-0 accent-verde-limao"
               />
               <div>
