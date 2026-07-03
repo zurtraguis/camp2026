@@ -10,6 +10,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
     cpf: "",
     phone: "11999998888",
     email: "",
+    shirtSize: "M",
     guardianName: "João Souza",
     guardianCpf: "12345678901",
     guardianPhone: "11988887777",
@@ -28,6 +29,17 @@ describe("registrationSchema", () => {
   it("aceita uma inscrição válida", () => {
     const r = registrationSchema.safeParse(validInput());
     expect(r.success).toBe(true);
+  });
+
+  it("exige o tamanho da camiseta", () => {
+    const missing = registrationSchema.safeParse(
+      validInput({ shirtSize: undefined }),
+    );
+    expect(missing.success).toBe(false);
+    const invalid = registrationSchema.safeParse(
+      validInput({ shirtSize: "XXG" }),
+    );
+    expect(invalid.success).toBe(false);
   });
 
   it("rejeita idade fora de 12–19", () => {

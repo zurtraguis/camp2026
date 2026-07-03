@@ -42,7 +42,9 @@ export const registrationSchema = z
     cpf: cpf.optional().or(z.literal("").transform(() => undefined)),
     phone: phone,
     email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-    shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XG"]).optional(),
+    shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XG"], {
+      error: "Selecione o tamanho da camiseta",
+    }),
     church: z.string().trim().max(120).optional(),
     city: z.string().trim().max(80).optional(),
 

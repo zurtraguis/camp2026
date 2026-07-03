@@ -15,14 +15,23 @@ if (password.length < 8) {
   process.exit(1);
 }
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+// main() async em vez de top-level await: o tsx compila este script para CJS
+// (package.json sem "type": "module"), e CJS não suporta top-level await.
+async function main() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const prisma = new PrismaClient({ adapter });
 
-const passwordHash = await hashPassword(password);
-const user = await prisma.user.upsert({
-  where: { email },
-  create: { email, name, role: "ADMIN", passwordHash, emailVerified: new Date() },
-  update: { name, role: "ADMIN", passwordHash },
+  const passwordHash = await hashPassword(password);
+  const user = await prisma.user.upsert({
+    where: { email },
+    create: { email, name, role: "ADMIN", passwordHash, emailVerified: new Date() },
+    update: { name, role: "ADMIN", passwordHash },
+  });
+  console.log(`✅ Admin pronto: ${user.email} (role ${user.role})`);
+  await prisma.$disconnect();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });
-console.log(`✅ Admin pronto: ${user.email} (role ${user.role})`);
-await prisma.$disconnect();

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getActiveLote, type ActiveLote } from "@/lib/lote.service";
 import { env } from "@/lib/env";
 import { Callout } from "@/components/ui";
@@ -67,6 +68,16 @@ export default async function InscricaoPage() {
           />
         </>
       )}
+
+      <p className="mt-8 text-center text-sm text-muted">
+        Já se inscreveu?{" "}
+        <Link
+          href="/inscricao/localizar"
+          className="text-verde-limao underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-verde-limao"
+        >
+          Encontre sua inscrição pelo código ou CPF →
+        </Link>
+      </p>
     </RegistrationArtShell>
   );
 }
