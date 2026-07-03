@@ -109,13 +109,13 @@ function InstallmentCard({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-surface-2 p-4">
+    <div className="carne-card rounded-xl border border-border bg-surface-2 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-xs font-condensed uppercase tracking-widest text-muted">
             Parcela {inst.number}
           </p>
-          <p className="font-display text-2xl text-verde-limao">
+          <p className="print-accent font-display text-2xl text-verde-limao">
             {formatBRL(inst.amountCents)}
           </p>
           <p className="text-xs text-muted">Vencimento: {fmtDate(inst.dueDate)}</p>
@@ -157,7 +157,7 @@ function InstallmentCard({
               </p>
               <div className="flex gap-2">
                 <div className="flex-1 overflow-hidden rounded-lg border border-border bg-surface-1 px-3 py-2">
-                  <p className="truncate font-mono text-xs text-muted">
+                  <p className="print-code truncate font-mono text-xs text-muted">
                     {inst.payload}
                   </p>
                 </div>
@@ -239,14 +239,47 @@ export function CarnePanel({
 
   return (
     <section aria-labelledby="carne-heading" className="space-y-5">
-      {/* Regras de impressão: ao imprimir, mostra só o carnê, em fundo branco. */}
+      {/* Regras de impressão: mostra só o carnê, em papel branco, com texto
+          escuro legível (os tokens do tema são claros e sumiriam no branco). */}
       <style>{`
         @media print {
+          @page { margin: 14mm; }
           body * { visibility: hidden !important; }
           #carne-print, #carne-print * { visibility: visible !important; }
           #carne-print {
             position: absolute; left: 0; top: 0; width: 100%;
-            background: #fff !important; color: #000 !important; padding: 16px;
+            background: #fff !important; color: #111 !important;
+          }
+          /* Força legibilidade: texto escuro, sem fundos/realces do tema. */
+          #carne-print * {
+            color: #1a1a1a !important;
+            background: transparent !important;
+            border-color: #bbb !important;
+            box-shadow: none !important;
+          }
+          /* Mantém um acento de marca com contraste em papel. */
+          #carne-print .print-accent { color: #2f6b00 !important; }
+          #carne-print .carne-card {
+            border: 1px solid #999 !important;
+            border-radius: 8px;
+            padding: 12px !important;
+            margin-bottom: 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          /* Na impressão, o Pix copia-e-cola aparece inteiro (sem "…"),
+             senão o código impresso fica inutilizável. */
+          #carne-print .print-code {
+            overflow: visible !important;
+            white-space: normal !important;
+            word-break: break-all !important;
+            text-overflow: clip !important;
+          }
+          /* O QR é imagem branca — garante a impressão fiel. */
+          #carne-print img {
+            background: #fff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           #carne-print .no-print { display: none !important; }
         }
@@ -269,8 +302,8 @@ export function CarnePanel({
 
       <div id="carne-print" className="space-y-5">
         {/* Cabeçalho do carnê (aparece na impressão) */}
-        <div className="rounded-xl border border-verde-limao/30 bg-verde-limao/5 px-5 py-4">
-          <p className="text-xs font-condensed uppercase tracking-widest text-muted">
+        <div className="carne-card rounded-xl border border-verde-limao/30 bg-verde-limao/5 px-5 py-4">
+          <p className="print-accent text-xs font-condensed uppercase tracking-widest text-muted">
             Carnê Acampamento RAIZ 2026
           </p>
           <p className="font-display text-xl text-creme">{camperName}</p>
@@ -280,7 +313,10 @@ export function CarnePanel({
             Chave Pix: <span className="font-mono text-creme">{pixKey}</span>
           </p>
           <p className="mt-2 text-sm text-creme">
-            Total: <span className="text-verde-limao">{formatBRL(totalCents)}</span>{" "}
+            Total:{" "}
+            <span className="print-accent text-verde-limao">
+              {formatBRL(totalCents)}
+            </span>{" "}
             em {installments.length}x · {paidCount} de {installments.length} pago
             {paidCount === 1 ? "" : "s"}
           </p>
