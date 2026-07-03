@@ -9,12 +9,9 @@ export const metadata = { title: "Tribos" };
 export default async function TribosPage() {
   await requireAdmin();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db_ = db as any; // pre-migration cast
-
   type RegRow = { id: string; gender: string; ageAtCamp: number; tribo: string | null };
 
-  const registrations = (await db_.registration.findMany({
+  const registrations = (await db.registration.findMany({
     where: { status: { not: "CANCELLED" } },
     select: {
       id: true,

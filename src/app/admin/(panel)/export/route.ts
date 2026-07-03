@@ -70,11 +70,8 @@ export async function GET() {
     return new NextResponse("Não autorizado.", { status: 401 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db_ = db as any; // pre-migration cast
-
   // Fetch all registrations (LGPD: NO health/triage data)
-  const registrations = (await db_.registration.findMany({
+  const registrations = (await db.registration.findMany({
     include: {
       guardian: { select: { name: true, phone: true } },
       payment: {

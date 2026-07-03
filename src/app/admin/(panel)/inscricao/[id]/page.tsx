@@ -111,10 +111,7 @@ export default async function InscricaoDetailPage({ params }: Props) {
   await requireAdmin();
   const { id } = await params;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db_ = db as any; // pre-migration cast
-
-  const reg = (await db_.registration.findUnique({
+  const reg = (await db.registration.findUnique({
     where: { id },
     include: {
       guardian: true,

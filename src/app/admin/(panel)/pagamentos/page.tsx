@@ -23,10 +23,7 @@ type PaymentRow = {
 export default async function PagamentosPage() {
   await requireAdmin();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db_ = db as any; // pre-migration cast
-
-  const payments = (await db_.payment.findMany({
+  const payments = (await db.payment.findMany({
     where: {
       method: "PIX",
       status: "AWAITING_REVIEW",
@@ -72,7 +69,7 @@ export default async function PagamentosPage() {
       registration: { publicCode: string; fullName: string; ageAtCamp: number };
     };
   };
-  const installments = (await db_.installment.findMany({
+  const installments = (await db.installment.findMany({
     where: { status: "AWAITING_REVIEW" },
     include: {
       payment: {

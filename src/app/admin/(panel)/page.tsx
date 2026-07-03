@@ -34,14 +34,10 @@ const METHOD_LABELS: Record<string, string> = {
 
 export default async function AdminDashboardPage() {
   await requireAdmin();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db_ = db as any; // db models not yet in generated types (pre-migration); safe to cast
-
   const [registrations, pendingReview, confirmed, byTribo, totalCount] =
     await Promise.all([
       // Recent 50 registrations for the table
-      db_.registration.findMany({
+      db.registration.findMany({
         where: { status: { not: "CANCELLED" } },
         include: {
           payment: { select: { method: true, amountCents: true, status: true } },
@@ -49,30 +45,20 @@ export default async function AdminDashboardPage() {
         },
         orderBy: { createdAt: "desc" },
         take: 50,
-      }) as Promise<Array<{
-        id: string;
-        publicCode: string;
-        fullName: string;
-        ageAtCamp: number;
-        gender: string;
-        tribo: string | null;
-        status: string;
-        createdAt: Date;
-        payment: { method: string; amountCents: number; status: string } | null;
-        lote: { name: string; order: number } | null;
-      }>>,
+      }),
       // Count awaiting review
-      db_.registration.count({ where: { status: "AWAITING_REVIEW" } }) as Promise<number>,
+      db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
       // Count confirmed
-      db_.registration.count({ where: { status: "CONFIRMED" } }) as Promise<number>,
+      db.registration.count({ where: { status: "CONFIRMED" } }),
       // Count by tribo (non-cancelled)
-      db_.registration.groupBy({
+      db.registration.groupBy({
         by: ["tribo"],
         where: { status: { not: "CANCELLED" } },
         _count: { _all: true },
-      }) as Promise<Array<{ tribo: string | null; _count: { _all: number } }>>,
+        orderBy: { tribo: "asc" },
+      }),
       // Total non-cancelled
-      db_.registration.count({ where: { status: { not: "CANCELLED" } } }) as Promise<number>,
+      db.registration.count({ where: { status: { not: "CANCELLED" } } }),
     ]);
 
   const triboCountMap: Record<string, number> = {};

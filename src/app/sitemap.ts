@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
-export const dynamic = "force-dynamic";
+/* Conteúdo essencialmente estático — cache de 1 h em vez de regerar a cada hit. */
+export const revalidate = 3600;
 
 const STATIC_PATHS = ["", "/login", "/register", "/styleguide"] as const;
 

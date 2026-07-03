@@ -31,3 +31,6 @@ Thumbs.db
 .harness/events.jsonl
 .harness/events-*.jsonl.gz
 .harness/cache/
+
+# Mockups de design locais (PNGs pesados, não usados pelo app)
+site/
