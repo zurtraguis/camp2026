@@ -8,6 +8,7 @@ import { createRegistration } from "@/lib/registration.service";
 import {
   createCheckoutSession,
   submitPixReceipt,
+  submitInstallmentReceipt,
 } from "@/lib/payment.service";
 import { env } from "@/lib/env";
 
@@ -53,6 +54,7 @@ export async function createRegistrationAction(
     consentActivities: bool(formData.get("consentActivities")),
     consentImage: bool(formData.get("consentImage")),
     paymentMethod: String(formData.get("paymentMethod") ?? ""),
+    installments: String(formData.get("installments") ?? "1"),
   };
 
   const parsed = registrationSchema.safeParse(raw);
@@ -119,6 +121,29 @@ export async function submitPixReceiptAction(
     await submitPixReceipt(code, file);
     revalidatePath(`/inscricao/${code}`);
     return { ok: true, message: "Comprovante enviado! Aguarde a confirmação." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao enviar comprovante.",
+    };
+  }
+}
+
+/** Recebe o upload do comprovante de uma parcela do carnê. */
+export async function submitInstallmentReceiptAction(
+  _prev: PixUploadState,
+  formData: FormData,
+): Promise<PixUploadState> {
+  const code = String(formData.get("code") ?? "");
+  const number = Number(formData.get("number") ?? "0");
+  const file = formData.get("receipt");
+  if (!code || !number || !(file instanceof File) || file.size === 0) {
+    return { ok: false, message: "Selecione um arquivo de comprovante." };
+  }
+  try {
+    await submitInstallmentReceipt(code, number, file);
+    revalidatePath(`/inscricao/${code}`);
+    return { ok: true, message: "Comprovante da parcela enviado! Aguarde a confirmação." };
   } catch (err) {
     return {
       ok: false,

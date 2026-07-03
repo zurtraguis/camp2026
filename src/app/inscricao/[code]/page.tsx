@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { getRegistrationByCode } from "@/lib/registration.service";
-import { getPixDisplay } from "@/lib/payment.service";
+import { getPixDisplay, getCarneDisplay } from "@/lib/payment.service";
 import { env } from "@/lib/env";
 import { formatBRL } from "@/lib/format";
 import { Callout, Badge, Card, Button } from "@/components/ui";
 import { startCheckoutAction } from "@/app/inscricao/actions";
 import { PixPanel } from "./PixPanel";
+import { CarnePanel } from "./CarnePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -36,19 +37,33 @@ export default async function RegistrationStatusPage({
   const isAwaitingReview = reg.status === "AWAITING_REVIEW";
   const isCancelled = reg.status === "CANCELLED";
   const isPix = payment?.method === "PIX";
+  const isCarne = isPix && (payment?.installmentsTotal ?? 0) >= 2;
+  const isPixAvista = isPix && !isCarne;
   const isCard = payment?.method === "CARD";
   const cardOnline = env.NEXT_PUBLIC_CARD_ONLINE_ENABLED;
   const paymentConfirmed = payment?.status === "CONFIRMED";
 
   /* Fetch Pix display data server-side (server-only function) */
   let pixDisplay = null;
-  if (isPix && !isConfirmed && !isAwaitingReview && !isCancelled) {
+  if (isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled) {
     try {
       pixDisplay = await getPixDisplay(code);
     } catch {
       /* will show error state */
     }
   }
+
+  /* Carnê: busca as parcelas com QR/copia-e-cola */
+  let carneDisplay = null;
+  if (isCarne && !isCancelled) {
+    try {
+      carneDisplay = await getCarneDisplay(code);
+    } catch {
+      /* will show error state */
+    }
+  }
+  const carneAllPaid =
+    carneDisplay?.installments.every((i) => i.status === "CONFIRMED") ?? false;
 
   return (
     <main
@@ -110,8 +125,8 @@ export default async function RegistrationStatusPage({
           </p>
         </div>
 
-        {/* ── Status: CONFIRMED ── */}
-        {isConfirmed && (
+        {/* ── Status: CONFIRMED (à vista ou carnê quitado) ── */}
+        {isConfirmed && (!isCarne || carneAllPaid) && (
           <Callout tone="success" title="Inscrição confirmada!">
             Pagamento confirmado. Sua vaga está garantida — a tribo será
             revelada em breve pela organização. Até breve no RAIZ 2026!
@@ -169,8 +184,8 @@ export default async function RegistrationStatusPage({
           </div>
         )}
 
-        {/* ── PIX: show payment panel ── */}
-        {isPix && !isConfirmed && !isAwaitingReview && !isCancelled && (
+        {/* ── PIX à vista: painel de pagamento ── */}
+        {isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled && (
           <>
             {pixDisplay ? (
               <PixPanel
@@ -187,6 +202,37 @@ export default async function RegistrationStatusPage({
               <Callout tone="danger" title="Erro ao carregar dados Pix">
                 Não foi possível carregar as informações de pagamento. Tente
                 recarregar a página.
+              </Callout>
+            )}
+          </>
+        )}
+
+        {/* ── Carnê Pix: vaga garantida na 1ª parcela + parcelas ── */}
+        {isCarne && !isCancelled && (
+          <>
+            {isConfirmed && !carneAllPaid && (
+              <Callout tone="success" title="Vaga garantida!">
+                A 1ª parcela foi confirmada e sua vaga está reservada. Continue
+                pagando as parcelas do carnê abaixo até quitar o total.
+              </Callout>
+            )}
+            {carneDisplay ? (
+              <CarnePanel
+                code={code}
+                camperName={reg.fullName}
+                publicCode={reg.publicCode}
+                configured={carneDisplay.configured}
+                pixKey={carneDisplay.key}
+                receiverName={carneDisplay.receiverName}
+                totalCents={carneDisplay.totalCents}
+                installments={carneDisplay.installments.map((i) => ({
+                  ...i,
+                  dueDate: i.dueDate.toISOString(),
+                }))}
+              />
+            ) : (
+              <Callout tone="danger" title="Erro ao carregar o carnê">
+                Não foi possível carregar as parcelas. Tente recarregar a página.
               </Callout>
             )}
           </>

@@ -127,15 +127,91 @@ export async function getPixDisplay(publicCode: string): Promise<PixDisplay> {
   };
   if (!key) return base;
 
+  const { payload, qrDataUrl } = await buildPixQr(
+    reg.payment.amountCents,
+    reg.publicCode,
+  );
+  return { ...base, payload, qrDataUrl };
+}
+
+/** Monta o "copia e cola" + QR (data URL) do Pix para um valor/txid. */
+async function buildPixQr(
+  amountCents: number,
+  txid: string,
+): Promise<{ payload: string; qrDataUrl: string }> {
   const payload = buildPixPayload({
-    key,
+    key: env.NEXT_PUBLIC_PIX_KEY as string,
     receiverName: env.NEXT_PUBLIC_PIX_RECEIVER_NAME,
     receiverCity: env.NEXT_PUBLIC_PIX_RECEIVER_CITY,
-    amount: reg.payment.amountCents / 100,
-    txid: reg.publicCode,
+    amount: amountCents / 100,
+    txid,
   });
   const qrDataUrl = await QRCode.toDataURL(payload, { margin: 1, width: 280 });
-  return { ...base, payload, qrDataUrl };
+  return { payload, qrDataUrl };
+}
+
+/** Uma parcela do carnê, com o Pix pronto para exibir. */
+export interface CarneInstallment {
+  id: string;
+  number: number;
+  amountCents: number;
+  dueDate: Date;
+  status: "PENDING" | "AWAITING_REVIEW" | "CONFIRMED" | "FAILED" | "EXPIRED" | "REFUNDED";
+  txid: string;
+  payload?: string;
+  qrDataUrl?: string;
+}
+
+export interface CarneDisplay {
+  configured: boolean;
+  key: string;
+  receiverName: string;
+  totalCents: number;
+  installmentsTotal: number;
+  installments: CarneInstallment[];
+}
+
+/** Dados do carnê Pix (todas as parcelas com QR/copia-e-cola). */
+export async function getCarneDisplay(publicCode: string): Promise<CarneDisplay> {
+  const reg = await db.registration.findUnique({
+    where: { publicCode },
+    include: {
+      payment: { include: { installments: { orderBy: { number: "asc" } } } },
+    },
+  });
+  if (!reg || !reg.payment) throw new Error("Inscrição não encontrada.");
+  const p = reg.payment;
+
+  const key = env.NEXT_PUBLIC_PIX_KEY;
+  const configured = Boolean(key);
+
+  const installments: CarneInstallment[] = await Promise.all(
+    p.installments.map(async (inst) => {
+      const base: CarneInstallment = {
+        id: inst.id,
+        number: inst.number,
+        amountCents: inst.amountCents,
+        dueDate: inst.dueDate,
+        status: inst.status,
+        txid: inst.pixTxid ?? `${reg.publicCode}${inst.number}`,
+      };
+      // Só gera QR para parcelas ainda em aberto (não pagas/confirmadas).
+      if (!configured || inst.status === "CONFIRMED" || inst.status === "AWAITING_REVIEW") {
+        return base;
+      }
+      const { payload, qrDataUrl } = await buildPixQr(inst.amountCents, base.txid);
+      return { ...base, payload, qrDataUrl };
+    }),
+  );
+
+  return {
+    configured,
+    key: key ?? "",
+    receiverName: env.NEXT_PUBLIC_PIX_RECEIVER_NAME,
+    totalCents: p.amountCents,
+    installmentsTotal: p.installmentsTotal ?? p.installments.length,
+    installments,
+  };
 }
 
 /** Recebe o comprovante Pix: valida, faz upload e marca AWAITING_REVIEW. */
@@ -167,6 +243,95 @@ export async function submitPixReceipt(
       where: { id: reg.id },
       data: { status: "AWAITING_REVIEW" },
     }),
+  ]);
+}
+
+/** Recebe o comprovante de UMA parcela do carnê: valida, faz upload e marca
+ *  a parcela como AWAITING_REVIEW. */
+export async function submitInstallmentReceipt(
+  publicCode: string,
+  installmentNumber: number,
+  file: File,
+): Promise<void> {
+  if (!storageConfigured()) {
+    throw new Error(
+      "Upload indisponível: configure o storage de comprovantes (S3/SeaweedFS ou Supabase).",
+    );
+  }
+  const reg = await db.registration.findUnique({
+    where: { publicCode },
+    include: { payment: { include: { installments: true } } },
+  });
+  if (!reg || !reg.payment) throw new Error("Inscrição não encontrada.");
+  if (!reg.payment.installmentsTotal) {
+    throw new Error("Esta inscrição não é um carnê parcelado.");
+  }
+  const inst = reg.payment.installments.find((i) => i.number === installmentNumber);
+  if (!inst) throw new Error("Parcela não encontrada.");
+  if (inst.status === "CONFIRMED") throw new Error("Esta parcela já foi confirmada.");
+
+  const validated = await validateReceipt(file);
+  const path = await uploadReceipt(reg.id, validated);
+
+  await db.installment.update({
+    where: { id: inst.id },
+    data: { status: "AWAITING_REVIEW", pixReceiptPath: path },
+  });
+}
+
+/** Admin confirma ou rejeita a parcela de um carnê. Ao confirmar a 1ª parcela,
+ *  a inscrição é confirmada (vaga garantida); ao confirmar todas, o pagamento
+ *  fica CONFIRMED. */
+export async function reviewInstallment(
+  installmentId: string,
+  decision: "confirm" | "reject",
+  adminId: string,
+  note?: string,
+): Promise<void> {
+  const inst = await db.installment.findUnique({
+    where: { id: installmentId },
+    include: { payment: { include: { installments: true } } },
+  });
+  if (!inst || !inst.payment) throw new Error("Parcela não encontrada.");
+
+  const confirmed = decision === "confirm";
+
+  // Estado das demais parcelas + esta recém-confirmada.
+  const confirmedCount =
+    inst.payment.installments.filter(
+      (i) => i.id !== installmentId && i.status === "CONFIRMED",
+    ).length + (confirmed ? 1 : 0);
+  const total = inst.payment.installmentsTotal ?? inst.payment.installments.length;
+  const allPaid = confirmed && confirmedCount >= total;
+
+  await db.$transaction([
+    db.installment.update({
+      where: { id: installmentId },
+      data: {
+        status: confirmed ? "CONFIRMED" : "FAILED",
+        reviewedById: adminId,
+        reviewedAt: new Date(),
+        reviewNote: note ?? null,
+      },
+    }),
+    // Vaga garantida a partir da 1ª parcela paga.
+    ...(confirmed
+      ? [
+          db.registration.update({
+            where: { id: inst.payment.registrationId },
+            data: { status: "CONFIRMED" as const },
+          }),
+        ]
+      : []),
+    // Pagamento inteiro só quita quando todas as parcelas estão confirmadas.
+    ...(allPaid
+      ? [
+          db.payment.update({
+            where: { id: inst.payment.id },
+            data: { status: "CONFIRMED" as const },
+          }),
+        ]
+      : []),
   ]);
 }
 
