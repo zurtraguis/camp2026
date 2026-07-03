@@ -64,7 +64,17 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 function getEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  // Portainer/docker-compose substituem variáveis não preenchidas por string
+  // vazia (""). Um "" é um valor *presente* e reprova validadores como
+  // `startsWith`/`min` — o que fazia `getEnv()` lançar e derrubar (500) toda
+  // rota dinâmica. Tratamos "" como ausente para que os campos opcionais caiam
+  // no default/undefined; cada serviço então falha fechado no seu ponto de uso
+  // com mensagem clara quando a chave realmente faltar.
+  const cleaned: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined && value !== "") cleaned[key] = value;
+  }
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     console.error(
       "Variáveis de ambiente inválidas:",
