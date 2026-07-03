@@ -35,6 +35,19 @@ describe("buildPixPayload", () => {
     expect(payload).not.toMatch(/[^\x20-\x7e]/);
   });
 
+  it("remove caracteres não alfanuméricos do txid (spec BACEN: [A-Za-z0-9])", () => {
+    // O publicCode do site tem hífen (RAIZ-XXXXXX); no payload ele precisa
+    // sair sem o hífen, senão os apps de banco recusam o QR como inválido.
+    const payload = buildPixPayload(base); // txid: "RAIZ-ABC123"
+    expect(payload).toContain("0510RAIZABC123");
+    expect(payload).not.toContain("RAIZ-ABC123");
+  });
+
+  it('usa "***" quando o txid fica vazio após a sanitização', () => {
+    const payload = buildPixPayload({ ...base, txid: "--- ---" });
+    expect(payload).toContain("0503***");
+  });
+
   it("aceita valor livre quando amount é omitido", () => {
     const payload = buildPixPayload({ ...base, amount: undefined });
     expect(payload).not.toContain("5406");
