@@ -21,6 +21,9 @@ import type { RegistrationFormState } from "@/app/inscricao/actions";
 interface Props {
   priceCents: number;
   loteName: string;
+  /** Quando true, a opção de cartão abre o checkout online (Stripe). Enquanto
+   *  false (padrão atual), o cartão vira registro para pagamento presencial. */
+  cardOnlineEnabled?: boolean;
 }
 
 /* ─── Steps ─── */
@@ -205,7 +208,11 @@ function StepIndicator({ current }: { current: Step }) {
 }
 
 /* ─── Main form ─── */
-export function RegistrationForm({ priceCents, loteName }: Props) {
+export function RegistrationForm({
+  priceCents,
+  loteName,
+  cardOnlineEnabled = false,
+}: Props) {
   const [state, formAction] = useActionState<RegistrationFormState, FormData>(
     createRegistrationAction,
     { ok: false },
@@ -831,38 +838,18 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
               <span className="sr-only">(obrigatório)</span>
             </legend>
 
-            {/* CARD */}
-            <label
-              htmlFor="pm_card"
-              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/90 bg-[#0b0b0a]/55 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
-            >
-              <input
-                id="pm_card"
-                type="radio"
-                name="paymentMethod"
-                value="CARD"
-                defaultChecked
-                className="mt-0.5 h-5 w-5 shrink-0 accent-verde-limao"
-              />
-              <div>
-                <p className="font-semibold text-creme">Cartão de crédito</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  Você será redirecionado ao Stripe para inserir os dados do cartão
-                  com segurança. Aprovação imediata.
-                </p>
-              </div>
-            </label>
-
-            {/* PIX */}
+            {/* PIX — opção online principal (fica em primeiro e já marcada
+                enquanto o cartão online está em standby). */}
             <label
               htmlFor="pm_pix"
-              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/45 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
+              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/90 bg-[#0b0b0a]/55 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
             >
               <input
                 id="pm_pix"
                 type="radio"
                 name="paymentMethod"
                 value="PIX"
+                defaultChecked={!cardOnlineEnabled}
                 className="mt-0.5 h-5 w-5 shrink-0 accent-verde-limao"
               />
               <div>
@@ -872,6 +859,44 @@ export function RegistrationForm({ priceCents, loteName }: Props) {
                   pagamento e envie o comprovante; a confirmação é feita em até 24 h
                   úteis.
                 </p>
+              </div>
+            </label>
+
+            {/* CARD — online (Stripe) quando habilitado; senão, registro para
+                pagamento presencial no crédito/débito. */}
+            <label
+              htmlFor="pm_card"
+              className="flex cursor-pointer items-start gap-5 rounded-sm border border-verde-limao/20 bg-[#0b0b0a]/45 p-5 transition-colors has-[:checked]:border-verde-limao has-[:checked]:bg-verde-limao/10"
+            >
+              <input
+                id="pm_card"
+                type="radio"
+                name="paymentMethod"
+                value="CARD"
+                defaultChecked={cardOnlineEnabled}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-verde-limao"
+              />
+              <div>
+                {cardOnlineEnabled ? (
+                  <>
+                    <p className="font-semibold text-creme">Cartão de crédito</p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Você será redirecionado ao Stripe para inserir os dados do
+                      cartão com segurança. Aprovação imediata.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold text-creme">
+                      Crédito ou débito (presencial)
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted">
+                      Sua inscrição fica reservada e o pagamento no cartão é feito
+                      presencialmente com a organização. O pagamento online no
+                      cartão será habilitado em breve.
+                    </p>
+                  </>
+                )}
               </div>
             </label>
 

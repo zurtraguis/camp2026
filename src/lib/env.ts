@@ -22,6 +22,14 @@ const envSchema = z.object({
   // Produto do catálogo Stripe (atribui as cobranças a ele). Opcional: sem ele,
   // o checkout usa um produto ad-hoc (product_data).
   STRIPE_PRODUCT_ID: z.string().startsWith("prod_").optional(),
+  // Cartão online (Stripe). STANDBY: enquanto "false" (padrão), a opção de
+  // cartão não abre o checkout — a inscrição fica reservada e o pagamento no
+  // crédito/débito é feito presencialmente. Para religar o checkout online,
+  // basta setar "true" (com as credenciais Stripe acima configuradas).
+  NEXT_PUBLIC_CARD_ONLINE_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Storage de comprovantes Pix — backend S3 (SeaweedFS / MinIO / R2). Preferido
   // quando configurado; senão cai no Supabase Storage abaixo.

@@ -9,6 +9,7 @@ import {
   createCheckoutSession,
   submitPixReceipt,
 } from "@/lib/payment.service";
+import { env } from "@/lib/env";
 
 export interface RegistrationFormState {
   ok: boolean;
@@ -83,7 +84,10 @@ export async function createRegistrationAction(
     return { ok: false, message };
   }
 
-  if (parsed.data.paymentMethod === "CARD") {
+  // Cartão online (Stripe) só quando habilitado. Em standby, o método CARD
+  // representa crédito/débito pago presencialmente: apenas registramos e
+  // seguimos para a página de status.
+  if (parsed.data.paymentMethod === "CARD" && env.NEXT_PUBLIC_CARD_ONLINE_ENABLED) {
     let url: string | null = null;
     try {
       url = await createCheckoutSession(registrationId);
@@ -126,6 +130,8 @@ export async function submitPixReceiptAction(
 /** Reinicia o checkout de cartão a partir da página de status. */
 export async function startCheckoutAction(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "");
+  // Cartão online em standby → sem checkout; volta para a página de status.
+  if (!env.NEXT_PUBLIC_CARD_ONLINE_ENABLED) redirect(`/inscricao/${code}`);
   const { getRegistrationByCode } = await import("@/lib/registration.service");
   const reg = await getRegistrationByCode(code);
   if (!reg) redirect(`/inscricao/${code}`);
