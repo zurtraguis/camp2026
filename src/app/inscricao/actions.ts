@@ -4,7 +4,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { registrationSchema, TRIAGE_FLAGS } from "@/lib/validation";
-import { createRegistration } from "@/lib/registration.service";
+import {
+  createRegistration,
+  getRegistrationByCode,
+  findRegistrationsByGuardianCpf,
+} from "@/lib/registration.service";
 import {
   createCheckoutSession,
   submitPixReceipt,
@@ -100,6 +104,74 @@ export async function createRegistrationAction(
     redirect(`/inscricao/${publicCode}?stripe_erro=1`);
   }
   redirect(`/inscricao/${publicCode}`);
+}
+
+export interface FoundRegistration {
+  publicCode: string;
+  fullName: string;
+  status: string;
+}
+
+export interface FindRegistrationState {
+  ok: boolean;
+  message?: string;
+  /** Preenchido quando o CPF do responsável tem mais de uma inscrição. */
+  matches?: FoundRegistration[];
+}
+
+/**
+ * Normaliza o que a pessoa digitou como código: aceita "RAIZ-UVJW47",
+ * "raiz uvjw47" ou só "UVJW47" e devolve o formato canônico "RAIZ-XXXXXX".
+ */
+function normalizePublicCode(input: string): string {
+  let core = input.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  // Remove o prefixo apenas se sobrar o núcleo (o núcleo tem 6 caracteres e
+  // poderia, em tese, começar com "RAIZ").
+  if (core.startsWith("RAIZ") && core.length > 6) core = core.slice(4);
+  return `RAIZ-${core}`;
+}
+
+/** Localiza a inscrição pelo código público ou pelo CPF do responsável. */
+export async function findRegistrationAction(
+  _prev: FindRegistrationState,
+  formData: FormData,
+): Promise<FindRegistrationState> {
+  const query = String(formData.get("query") ?? "").trim();
+  if (!query) {
+    return {
+      ok: false,
+      message: "Informe o código da inscrição ou o CPF do responsável.",
+    };
+  }
+
+  const notFound: FindRegistrationState = {
+    ok: false,
+    message:
+      "Não encontramos nenhuma inscrição com esse dado. Confira se digitou o código (ex.: RAIZ-UVJW47) ou o CPF do responsável exatamente como na inscrição.",
+  };
+
+  // Tem letra → tratamos como código da inscrição.
+  if (/[a-zA-Z]/.test(query)) {
+    const code = normalizePublicCode(query);
+    const reg = await getRegistrationByCode(code);
+    if (!reg) return notFound;
+    redirect(`/inscricao/${reg.publicCode}`);
+  }
+
+  // Só dígitos → CPF do responsável.
+  const digits = query.replace(/\D/g, "");
+  if (digits.length !== 11) {
+    return {
+      ok: false,
+      message:
+        "Digite o código da inscrição (ex.: RAIZ-UVJW47) ou o CPF do responsável com 11 dígitos.",
+    };
+  }
+
+  const matches = await findRegistrationsByGuardianCpf(digits);
+  if (matches.length === 0) return notFound;
+  if (matches.length === 1) redirect(`/inscricao/${matches[0].publicCode}`);
+  return { ok: true, matches };
 }
 
 export interface PixUploadState {

@@ -475,10 +475,19 @@ export function RegistrationForm({
             <Field
               label="Tamanho de camiseta"
               htmlFor="shirtSize"
+              required
               error={err.shirtSize}
             >
-              <Select id="shirtSize" name="shirtSize" defaultValue="">
-                <option value="">Não sei</option>
+              <Select
+                id="shirtSize"
+                name="shirtSize"
+                defaultValue=""
+                required
+                aria-required="true"
+              >
+                <option value="" disabled>
+                  Selecione…
+                </option>
                 {(["PP", "P", "M", "G", "GG", "XG"] as const).map((s) => (
                   <option key={s} value={s}>
                     {s}

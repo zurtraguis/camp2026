@@ -154,6 +154,20 @@ export async function createRegistration(
   );
 }
 
+/**
+ * Busca pública: inscrições ativas pelo CPF do responsável (dígitos apenas,
+ * como o cadastro armazena). Permite ao pai reencontrar a página da inscrição
+ * para enviar os comprovantes das parcelas do carnê.
+ */
+export async function findRegistrationsByGuardianCpf(cpfDigits: string) {
+  return db.registration.findMany({
+    where: { guardian: { cpf: cpfDigits }, status: { not: "CANCELLED" } },
+    select: { publicCode: true, fullName: true, status: true },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+}
+
 /** Busca pública pelo código (página de confirmação / status). */
 export async function getRegistrationByCode(publicCode: string) {
   return db.registration.findUnique({
