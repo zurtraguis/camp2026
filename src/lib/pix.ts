@@ -11,6 +11,16 @@ function tlv(id: string, value: string): string {
   return `${id}${len}${value}`;
 }
 
+/**
+ * txid do BR Code: a spec do BACEN só admite [A-Za-z0-9] (máx 25). O
+ * publicCode do site ("RAIZ-XXXXXX") tem hífen — se ele vazar para o payload,
+ * os apps de banco recusam o QR como inválido. Aqui removemos tudo que não
+ * for alfanumérico.
+ */
+function sanitizeTxid(input: string | undefined): string {
+  return (input ?? "").replace(/[^A-Za-z0-9]/g, "").slice(0, 25);
+}
+
 /** Remove acentos e limita comprimento (campos do BR Code são ASCII). */
 function sanitize(input: string, max: number): string {
   // NFD separa o acento em marca combinante; o filtro ASCII abaixo a remove.
@@ -40,7 +50,7 @@ export interface PixPayloadInput {
   receiverName: string; // nome do recebedor (máx 25)
   receiverCity: string; // cidade do recebedor (máx 15)
   amount?: number; // valor em reais (ex.: 300.00). Omitir => valor livre.
-  txid?: string; // referência (máx 25 alfanum). Default "***".
+  txid?: string; // referência (máx 25; só [A-Za-z0-9] — o resto é removido). Default "***".
   description?: string; // info adicional opcional
 }
 
@@ -58,7 +68,7 @@ export function buildPixPayload(input: PixPayloadInput): string {
     : "";
   const merchantAccountInfo = tlv("26", `${gui}${keyField}${descField}`);
 
-  const txid = sanitize(input.txid || "***", 25) || "***";
+  const txid = sanitizeTxid(input.txid) || "***";
   const additionalData = tlv("62", tlv("05", txid));
 
   const amountField =
