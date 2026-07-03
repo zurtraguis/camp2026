@@ -1,4 +1,5 @@
 import { getActiveLote, type ActiveLote } from "@/lib/lote.service";
+import { env } from "@/lib/env";
 import { Callout } from "@/components/ui";
 import { RegistrationArtShell } from "./RegistrationArtShell";
 import { RegistrationForm } from "./RegistrationForm";
@@ -59,7 +60,11 @@ export default async function InscricaoPage() {
             </div>
           )}
 
-          <RegistrationForm priceCents={lote.priceCents} loteName={lote.name} />
+          <RegistrationForm
+            priceCents={lote.priceCents}
+            loteName={lote.name}
+            cardOnlineEnabled={env.NEXT_PUBLIC_CARD_ONLINE_ENABLED}
+          />
         </>
       )}
     </RegistrationArtShell>

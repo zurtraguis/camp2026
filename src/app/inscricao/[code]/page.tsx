@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getRegistrationByCode } from "@/lib/registration.service";
 import { getPixDisplay } from "@/lib/payment.service";
+import { env } from "@/lib/env";
 import { formatBRL } from "@/lib/format";
 import { Callout, Badge, Card, Button } from "@/components/ui";
 import { startCheckoutAction } from "@/app/inscricao/actions";
@@ -36,6 +37,7 @@ export default async function RegistrationStatusPage({
   const isCancelled = reg.status === "CANCELLED";
   const isPix = payment?.method === "PIX";
   const isCard = payment?.method === "CARD";
+  const cardOnline = env.NEXT_PUBLIC_CARD_ONLINE_ENABLED;
   const paymentConfirmed = payment?.status === "CONFIRMED";
 
   /* Fetch Pix display data server-side (server-only function) */
@@ -143,16 +145,27 @@ export default async function RegistrationStatusPage({
                 {formatBRL(payment!.amountCents)}
               </p>
               <p className="mt-1 text-xs text-muted">
-                Pagamento via cartão · pendente
+                {cardOnline
+                  ? "Pagamento via cartão · pendente"
+                  : "Crédito ou débito · pagamento presencial"}
               </p>
             </div>
 
-            <form action={startCheckoutAction}>
-              <input type="hidden" name="code" value={code} />
-              <Button type="submit" size="lg" className="w-full">
-                Pagar com cartão →
-              </Button>
-            </form>
+            {cardOnline ? (
+              <form action={startCheckoutAction}>
+                <input type="hidden" name="code" value={code} />
+                <Button type="submit" size="lg" className="w-full">
+                  Pagar com cartão →
+                </Button>
+              </form>
+            ) : (
+              <Callout tone="warning" title="Pagamento presencial no cartão">
+                Sua vaga está reservada. O pagamento no crédito ou débito é feito
+                presencialmente com a organização. Guarde seu código{" "}
+                <strong className="font-mono">{reg.publicCode}</strong> — se
+                preferir pagar agora, você também pode voltar e escolher Pix.
+              </Callout>
+            )}
           </div>
         )}
 
