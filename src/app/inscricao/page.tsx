@@ -38,6 +38,13 @@ export default async function InscricaoPage() {
 
   return (
     <RegistrationArtShell>
+      <Link
+        href="/inscricao/localizar"
+        className="mb-6 flex items-center justify-center gap-2 rounded-lg border border-verde-limao/60 bg-verde-limao/10 px-4 py-3 text-center font-condensed text-sm font-bold uppercase tracking-[0.14em] text-verde-limao transition-colors hover:bg-verde-limao hover:text-[#0b0b0a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao"
+      >
+        Já se inscreveu? Acompanhe pelo código ou CPF →
+      </Link>
+
       {!lote && (
         <Callout tone="warning" title="Inscrições indisponíveis">
           As inscrições ainda não foram abertas. Volte em breve!

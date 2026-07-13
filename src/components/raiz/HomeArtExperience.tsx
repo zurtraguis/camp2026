@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { label: "Tribos", href: "#tribos" },
   { label: "Dúvidas", href: "#faq" },
   { label: "Quero me inscrever", href: "/inscricao" },
+  { label: "Já me inscrevi", href: "/inscricao/localizar" },
 ];
 
 const artSections: ArtSection[] = [
@@ -240,6 +241,15 @@ export function HomeArtExperience() {
                 <span className="opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                   Quero participar
                 </span>
+              </Link>
+            )}
+
+            {section.id === "inicio" && (
+              <Link
+                href="/inscricao/localizar"
+                className="absolute left-1/2 top-[76%] z-10 -translate-x-1/2 whitespace-nowrap font-condensed text-[clamp(0.4rem,0.9vw,0.78rem)] uppercase tracking-[0.16em] text-creme/60 underline decoration-verde-limao/40 underline-offset-4 transition-colors hover:text-verde-limao hover:decoration-verde-limao focus-visible:text-verde-limao focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-verde-limao"
+              >
+                Já me inscrevi
               </Link>
             )}
           </div>
