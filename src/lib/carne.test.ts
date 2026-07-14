@@ -3,6 +3,7 @@ import {
   splitInstallments,
   installmentDueDates,
   isCarne,
+  carneProgress,
   INSTALLMENT_INTERVAL_DAYS,
 } from "./carne";
 
@@ -52,5 +53,53 @@ describe("isCarne", () => {
     expect(isCarne(4)).toBe(false);
     expect(isCarne(null)).toBe(false);
     expect(isCarne(undefined)).toBe(false);
+  });
+});
+
+describe("carneProgress", () => {
+  const inst = (...statuses: string[]) => statuses.map((status) => ({ status }));
+
+  it("pagamento à vista não é carnê", () => {
+    expect(carneProgress({ installmentsTotal: null, installments: [] })).toEqual({
+      carne: false,
+      pagas: 0,
+      total: 0,
+      quitado: false,
+    });
+  });
+
+  it("conta só as parcelas CONFIRMED", () => {
+    const p = carneProgress({
+      installmentsTotal: 3,
+      installments: inst("CONFIRMED", "AWAITING_REVIEW", "PENDING"),
+    });
+    expect(p).toEqual({ carne: true, pagas: 1, total: 3, quitado: false });
+  });
+
+  it("parcela recusada (FAILED) não conta como paga", () => {
+    const p = carneProgress({
+      installmentsTotal: 2,
+      installments: inst("CONFIRMED", "FAILED"),
+    });
+    expect(p).toEqual({ carne: true, pagas: 1, total: 2, quitado: false });
+  });
+
+  it("marca quitado quando todas as parcelas confirmam", () => {
+    const p = carneProgress({
+      installmentsTotal: 3,
+      installments: inst("CONFIRMED", "CONFIRMED", "CONFIRMED"),
+    });
+    expect(p).toEqual({ carne: true, pagas: 3, total: 3, quitado: true });
+  });
+
+  it("sem installmentsTotal, cai para a contagem de parcelas", () => {
+    const p = carneProgress({
+      installmentsTotal: null,
+      installments: inst("CONFIRMED", "PENDING"),
+    });
+    // isCarne(null) é false → some como "À vista", mas total reflete as linhas.
+    expect(p.carne).toBe(false);
+    expect(p.total).toBe(2);
+    expect(p.pagas).toBe(1);
   });
 });

@@ -8,6 +8,14 @@ export function formatBRL(cents: number): string {
   }).format(cents / 100);
 }
 
+/** Telefone → "(92) 98173-4321". Devolve a entrada se não tiver 10/11 dígitos. */
+export function formatPhone(phone: string): string {
+  const d = phone.replace(/\D/g, "");
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return phone;
+}
+
 /** Idade em anos completos numa data de referência (default: hoje). */
 export function ageOn(birthDate: Date, ref: Date = new Date()): number {
   let age = ref.getFullYear() - birthDate.getFullYear();

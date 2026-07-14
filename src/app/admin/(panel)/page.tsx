@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { TRIBOS, TRIBO_META } from "@/lib/tribos";
 import { formatBRL } from "@/lib/format";
+import { carneProgress } from "@/lib/carne";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import Link from "next/link";
 
@@ -32,39 +33,88 @@ const METHOD_LABELS: Record<string, string> = {
   PIX: "Pix",
 };
 
+/** Inscrições vivas — base comum de todos os números desta página. */
+const ATIVAS = { status: { not: "CANCELLED" } } as const;
+
 export default async function AdminDashboardPage() {
   await requireAdmin();
-  const [registrations, pendingReview, confirmed, byTribo, totalCount] =
-    await Promise.all([
-      // Recent 50 registrations for the table
-      db.registration.findMany({
-        where: { status: { not: "CANCELLED" } },
-        include: {
-          payment: { select: { method: true, amountCents: true, status: true } },
-          lote: { select: { name: true, order: true } },
+  const [
+    registrations,
+    pendingReview,
+    confirmed,
+    byTribo,
+    totalCount,
+    previstoAgg,
+    avistaEmCaixaAgg,
+    parcelasEmCaixaAgg,
+  ] = await Promise.all([
+    // Recent 50 registrations for the table
+    db.registration.findMany({
+      where: ATIVAS,
+      include: {
+        payment: {
+          select: {
+            method: true,
+            amountCents: true,
+            status: true,
+            installmentsTotal: true,
+            installments: { select: { status: true } },
+          },
         },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      }),
-      // Count awaiting review
-      db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
-      // Count confirmed
-      db.registration.count({ where: { status: "CONFIRMED" } }),
-      // Count by tribo (non-cancelled)
-      db.registration.groupBy({
-        by: ["tribo"],
-        where: { status: { not: "CANCELLED" } },
-        _count: { _all: true },
-        orderBy: { tribo: "asc" },
-      }),
-      // Total non-cancelled
-      db.registration.count({ where: { status: { not: "CANCELLED" } } }),
-    ]);
+        lote: { select: { name: true, order: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+    // Count awaiting review
+    db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
+    // Count confirmed
+    db.registration.count({ where: { status: "CONFIRMED" } }),
+    // Count by tribo (non-cancelled)
+    db.registration.groupBy({
+      by: ["tribo"],
+      where: ATIVAS,
+      _count: { _all: true },
+      orderBy: { tribo: "asc" },
+    }),
+    // Total non-cancelled
+    db.registration.count({ where: ATIVAS }),
+    // Previsto: tudo que as inscrições vivas devem render, pago ou não.
+    db.payment.aggregate({
+      _sum: { amountCents: true },
+      where: { registration: ATIVAS },
+    }),
+    // Em caixa, parte 1: pagamentos à vista (Pix/cartão) quitados. O corte é
+    // "não tem parcela" em vez de installmentsTotal: um carnê é contado só
+    // pelas parcelas abaixo, senão seu valor cheio entraria duas vezes.
+    db.payment.aggregate({
+      _sum: { amountCents: true },
+      where: {
+        status: "CONFIRMED",
+        installments: { none: {} },
+        registration: ATIVAS,
+      },
+    }),
+    // Em caixa, parte 2: carnê entra parcela a parcela, conforme confirmadas.
+    db.installment.aggregate({
+      _sum: { amountCents: true },
+      where: {
+        status: "CONFIRMED",
+        payment: { registration: ATIVAS },
+      },
+    }),
+  ]);
 
   const triboCountMap: Record<string, number> = {};
   for (const row of byTribo) {
     if (row.tribo) triboCountMap[row.tribo] = row._count._all;
   }
+
+  const previstoCents = previstoAgg._sum.amountCents ?? 0;
+  const emCaixaCents =
+    (avistaEmCaixaAgg._sum.amountCents ?? 0) +
+    (parcelasEmCaixaAgg._sum.amountCents ?? 0);
+  const aReceberCents = previstoCents - emCaixaCents;
 
   return (
     <div className="space-y-8">
@@ -126,6 +176,28 @@ export default async function AdminDashboardPage() {
         </Card>
       </section>
 
+      {/* Financeiro */}
+      <section aria-label="Financeiro" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SummaryCard
+          label="Total previsto"
+          value={formatBRL(previstoCents)}
+          accent="text-creme"
+          hint="Todas as inscrições ativas, pagas ou não"
+        />
+        <SummaryCard
+          label="Total em caixa"
+          value={formatBRL(emCaixaCents)}
+          accent="text-verde-limao"
+          hint="Pagamentos e parcelas já confirmados"
+        />
+        <SummaryCard
+          label="A receber"
+          value={formatBRL(aReceberCents)}
+          accent="text-amarelo-sol"
+          hint="Previsto menos o que já entrou"
+        />
+      </section>
+
       {/* Recent registrations table */}
       <section aria-label="Inscrições recentes">
         <h2 className="font-display text-xl text-creme mb-4">
@@ -142,6 +214,7 @@ export default async function AdminDashboardPage() {
                 <Th>Tribo</Th>
                 <Th>Status</Th>
                 <Th>Método</Th>
+                <Th>Carnê</Th>
                 <Th>Valor</Th>
                 <Th>Data</Th>
               </tr>
@@ -199,6 +272,9 @@ export default async function AdminDashboardPage() {
                         ? METHOD_LABELS[reg.payment.method] ?? reg.payment.method
                         : "—"}
                     </Td>
+                    <Td>
+                      <CarneCell payment={reg.payment} />
+                    </Td>
                     <Td className="tabular-nums text-muted">
                       {reg.payment?.amountCents != null
                         ? formatBRL(reg.payment.amountCents)
@@ -213,7 +289,7 @@ export default async function AdminDashboardPage() {
               {registrations.length === 0 && (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="py-12 text-center text-muted"
                   >
                     Nenhuma inscrição encontrada.
@@ -238,18 +314,21 @@ function SummaryCard({
   value,
   accent,
   href,
+  hint,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   accent: string;
   href?: string;
+  hint?: string;
 }) {
   const content = (
     <Card className="flex flex-col gap-1">
       <p className="text-xs font-condensed uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className={`font-display text-4xl ${accent}`}>{value}</p>
+      <p className={`font-display text-4xl tabular-nums ${accent}`}>{value}</p>
+      {hint && <p className="text-xs text-muted">{hint}</p>}
     </Card>
   );
 
@@ -264,6 +343,39 @@ function SummaryCard({
     );
   }
   return content;
+}
+
+/**
+ * Diz se a inscrição é carnê e quantas parcelas já foram confirmadas.
+ * Verde quando o carnê está quitado; amarelo enquanto faltam parcelas.
+ */
+function CarneCell({
+  payment,
+}: {
+  payment: {
+    installmentsTotal: number | null;
+    installments: { status: string }[];
+  } | null;
+}) {
+  if (!payment) return <span className="text-muted">—</span>;
+
+  const { carne, pagas, total, quitado } = carneProgress(payment);
+  if (!carne) return <span className="text-muted">À vista</span>;
+
+  return (
+    <Badge
+      className={
+        quitado
+          ? "border-verde-limao/30 bg-verde-limao/10 text-verde-limao"
+          : "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol"
+      }
+    >
+      <span className="tabular-nums">
+        {pagas}/{total}
+      </span>
+      <span className="sr-only"> parcelas confirmadas</span>
+    </Badge>
+  );
 }
 
 function Th({ children }: { children: React.ReactNode }) {
