@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatPhone } from "@/lib/format";
+import { carneProgress } from "@/lib/carne";
 import { TRIBO_META } from "@/lib/tribos";
 import { TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { signedReceiptUrl } from "@/lib/storage";
@@ -34,6 +35,15 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   FAILED: "Falhou",
   EXPIRED: "Expirado",
   REFUNDED: "Reembolsado",
+};
+
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  PENDING: "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol",
+  AWAITING_REVIEW: "border-info/30 bg-info/10 text-info",
+  CONFIRMED: "border-verde-limao/30 bg-verde-limao/10 text-verde-limao",
+  FAILED: "border-danger/30 bg-danger/10 text-danger",
+  EXPIRED: "border-danger/30 bg-danger/10 text-danger",
+  REFUNDED: "border-border bg-surface-2 text-muted",
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -99,6 +109,14 @@ type FullRegistration = {
     method: string;
     status: string;
     amountCents: number;
+    installmentsTotal: number | null;
+    installments: {
+      id: string;
+      number: number;
+      amountCents: number;
+      dueDate: Date;
+      status: string;
+    }[];
     pixReceiptPath: string | null;
     pixTxid: string | null;
     reviewedAt: Date | null;
@@ -117,7 +135,7 @@ export default async function InscricaoDetailPage({ params }: Props) {
       guardian: true,
       health: true,
       consent: true,
-      payment: true,
+      payment: { include: { installments: { orderBy: { number: "asc" } } } },
       lote: true,
     },
   })) as FullRegistration | null;
@@ -125,6 +143,11 @@ export default async function InscricaoDetailPage({ params }: Props) {
   if (!reg) notFound();
 
   const triboMeta = reg.tribo ? TRIBO_META[reg.tribo as keyof typeof TRIBO_META] : null;
+
+  const carne = reg.payment ? carneProgress(reg.payment) : null;
+  const formaLabel = carne?.carne
+    ? `Carnê em ${carne.total}x — ${carne.pagas}/${carne.total} confirmada(s)`
+    : "À vista";
 
   // Signed URL for Pix receipt
   let receiptUrl: string | null = null;
@@ -198,7 +221,7 @@ export default async function InscricaoDetailPage({ params }: Props) {
               value={GENDER_LABELS[reg.gender] ?? reg.gender}
             />
             {reg.cpf && <DataRow label="CPF" value={maskCPF(reg.cpf)} />}
-            {reg.phone && <DataRow label="Telefone" value={maskPhone(reg.phone)} />}
+            {reg.phone && <DataRow label="Telefone" value={formatPhone(reg.phone)} />}
             {reg.email && <DataRow label="E-mail" value={reg.email} />}
             {reg.shirtSize && <DataRow label="Tamanho de camiseta" value={reg.shirtSize} />}
             {reg.church && <DataRow label="Igreja" value={reg.church} />}
@@ -224,7 +247,7 @@ export default async function InscricaoDetailPage({ params }: Props) {
                 }
               />
               <DataRow label="CPF" value={maskCPF(reg.guardian.cpf)} />
-              <DataRow label="Telefone" value={maskPhone(reg.guardian.phone)} />
+              <DataRow label="Telefone" value={formatPhone(reg.guardian.phone)} />
               {reg.guardian.email && (
                 <DataRow label="E-mail" value={reg.guardian.email} />
               )}
@@ -251,6 +274,7 @@ export default async function InscricaoDetailPage({ params }: Props) {
                 label="Valor"
                 value={formatBRL(reg.payment.amountCents)}
               />
+              <DataRow label="Forma" value={formaLabel} />
               {reg.lote && (
                 <DataRow label="Lote" value={reg.lote.name} />
               )}
@@ -270,6 +294,40 @@ export default async function InscricaoDetailPage({ params }: Props) {
                 <DataRow label="Nota da revisão" value={reg.payment.reviewNote} />
               )}
             </dl>
+
+            {reg.payment.installments.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-condensed uppercase tracking-wide text-muted mb-2">
+                  Parcelas do carnê
+                </p>
+                <ul className="divide-y divide-border rounded-lg border border-border">
+                  {reg.payment.installments.map((inst) => (
+                    <li
+                      key={inst.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                    >
+                      <span className="text-muted">
+                        {inst.number}ª · vence{" "}
+                        {inst.dueDate.toLocaleDateString("pt-BR")}
+                      </span>
+                      <span className="flex items-center gap-3">
+                        <span className="tabular-nums text-creme">
+                          {formatBRL(inst.amountCents)}
+                        </span>
+                        <Badge
+                          className={
+                            PAYMENT_STATUS_COLORS[inst.status] ??
+                            "border-border bg-surface-2 text-muted"
+                          }
+                        >
+                          {PAYMENT_STATUS_LABELS[inst.status] ?? inst.status}
+                        </Badge>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {receiptUrl && (
               <div className="mt-4">
@@ -570,16 +628,10 @@ function HealthField({
   );
 }
 
-// Mask helpers — show partial data to reduce unnecessary exposure
+// Mask helper — o CPF segue parcial (não é dado de contato operacional).
+// Telefones aparecem inteiros: a equipe precisa ligar para o responsável.
 function maskCPF(cpf: string): string {
   const d = cpf.replace(/\D/g, "");
   if (d.length !== 11) return cpf;
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.***.${d.slice(9)}`;
-}
-
-function maskPhone(phone: string): string {
-  const d = phone.replace(/\D/g, "");
-  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-****`;
-  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-****`;
-  return phone;
 }

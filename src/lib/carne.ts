@@ -18,6 +18,21 @@ export function isCarne(installments: number | null | undefined): boolean {
 }
 
 /**
+ * Progresso de um carnê para exibição no admin: é carnê? quantas parcelas já
+ * foram confirmadas, de quantas? `total` cai para a contagem de parcelas
+ * quando `installmentsTotal` está ausente (dados antigos).
+ */
+export function carneProgress(payment: {
+  installmentsTotal: number | null;
+  installments: { status: string }[];
+}): { carne: boolean; pagas: number; total: number; quitado: boolean } {
+  const carne = isCarne(payment.installmentsTotal);
+  const total = payment.installmentsTotal ?? payment.installments.length;
+  const pagas = payment.installments.filter((i) => i.status === "CONFIRMED").length;
+  return { carne, pagas, total, quitado: carne && pagas >= total };
+}
+
+/**
  * Divide `totalCents` em `count` parcelas inteiras (centavos). O resto da divisão
  * é somado à 1ª parcela, de forma que a soma feche exatamente com o total.
  * Ex.: 30000/3 → [10000,10000,10000]; 10001/3 → [3335,3333,3333].
