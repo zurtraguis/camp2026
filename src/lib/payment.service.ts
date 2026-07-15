@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe.service";
 import { env } from "@/lib/env";
 import { buildPixPayload } from "@/lib/pix";
 import { validateReceipt, uploadReceipt, storageConfigured } from "@/lib/storage";
+import { notaBaixaManual, type FormaRecebimento } from "@/lib/baixa";
 
 const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
@@ -349,6 +350,55 @@ export async function reviewInstallment(
       }
     },
     { isolationLevel: "Serializable" },
+  );
+}
+
+/* ── Baixa manual ──────────────────────────────────────────────────────────
+ * A confirmação em si reusa reviewPixPayment/reviewInstallment — mesma
+ * transação, mesma regra de vaga garantida na 1ª parcela. O que muda é a
+ * origem: não há comprovante no storage, então a nota (montada em @/lib/baixa)
+ * é a única trilha de como o dinheiro entrou, junto com o reviewedById que os
+ * serviços já gravam.
+ */
+
+/** Baixa manual do pagamento inteiro (à vista). */
+export async function baixaManualPagamento(
+  paymentId: string,
+  adminId: string,
+  forma: FormaRecebimento,
+  obs?: string,
+): Promise<void> {
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    include: { installments: { select: { id: true } } },
+  });
+  if (!payment) throw new Error("Pagamento não encontrado.");
+  if (payment.status === "CONFIRMED") {
+    throw new Error("Este pagamento já está confirmado.");
+  }
+  // Num carnê o valor entra parcela a parcela; quitar o payment inteiro aqui
+  // marcaria como pago um dinheiro que não entrou e furaria os totais.
+  if (payment.installments.length > 0) {
+    throw new Error("Carnê: dê baixa parcela a parcela.");
+  }
+  await reviewPixPayment(paymentId, "confirm", adminId, notaBaixaManual(forma, obs));
+}
+
+/** Baixa manual de UMA parcela do carnê. */
+export async function baixaManualParcela(
+  installmentId: string,
+  adminId: string,
+  forma: FormaRecebimento,
+  obs?: string,
+): Promise<void> {
+  const inst = await db.installment.findUnique({ where: { id: installmentId } });
+  if (!inst) throw new Error("Parcela não encontrada.");
+  if (inst.status === "CONFIRMED") throw new Error("Esta parcela já foi confirmada.");
+  await reviewInstallment(
+    installmentId,
+    "confirm",
+    adminId,
+    notaBaixaManual(forma, obs),
   );
 }
 
