@@ -21,15 +21,29 @@ export function isCarne(installments: number | null | undefined): boolean {
  * Progresso de um carnê para exibição no admin: é carnê? quantas parcelas já
  * foram confirmadas, de quantas? `total` cai para a contagem de parcelas
  * quando `installmentsTotal` está ausente (dados antigos).
+ *
+ * `emRevisao` conta parcelas com comprovante enviado esperando decisão. Sem
+ * isso a lista não distingue "não pagou" de "pagou e está na fila": subir o
+ * comprovante de uma parcela não mexe no status da inscrição, então ambos
+ * aparecem como 0/3 / AGUARD. PGTO.
  */
 export function carneProgress(payment: {
   installmentsTotal: number | null;
   installments: { status: string }[];
-}): { carne: boolean; pagas: number; total: number; quitado: boolean } {
+}): {
+  carne: boolean;
+  pagas: number;
+  total: number;
+  quitado: boolean;
+  emRevisao: number;
+} {
   const carne = isCarne(payment.installmentsTotal);
   const total = payment.installmentsTotal ?? payment.installments.length;
   const pagas = payment.installments.filter((i) => i.status === "CONFIRMED").length;
-  return { carne, pagas, total, quitado: carne && pagas >= total };
+  const emRevisao = payment.installments.filter(
+    (i) => i.status === "AWAITING_REVIEW",
+  ).length;
+  return { carne, pagas, total, quitado: carne && pagas >= total, emRevisao };
 }
 
 /**

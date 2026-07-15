@@ -65,6 +65,7 @@ describe("carneProgress", () => {
       pagas: 0,
       total: 0,
       quitado: false,
+      emRevisao: 0,
     });
   });
 
@@ -73,7 +74,13 @@ describe("carneProgress", () => {
       installmentsTotal: 3,
       installments: inst("CONFIRMED", "AWAITING_REVIEW", "PENDING"),
     });
-    expect(p).toEqual({ carne: true, pagas: 1, total: 3, quitado: false });
+    expect(p).toEqual({
+      carne: true,
+      pagas: 1,
+      total: 3,
+      quitado: false,
+      emRevisao: 1,
+    });
   });
 
   it("parcela recusada (FAILED) não conta como paga", () => {
@@ -81,7 +88,13 @@ describe("carneProgress", () => {
       installmentsTotal: 2,
       installments: inst("CONFIRMED", "FAILED"),
     });
-    expect(p).toEqual({ carne: true, pagas: 1, total: 2, quitado: false });
+    expect(p).toEqual({
+      carne: true,
+      pagas: 1,
+      total: 2,
+      quitado: false,
+      emRevisao: 0,
+    });
   });
 
   it("marca quitado quando todas as parcelas confirmam", () => {
@@ -89,7 +102,29 @@ describe("carneProgress", () => {
       installmentsTotal: 3,
       installments: inst("CONFIRMED", "CONFIRMED", "CONFIRMED"),
     });
-    expect(p).toEqual({ carne: true, pagas: 3, total: 3, quitado: true });
+    expect(p).toEqual({
+      carne: true,
+      pagas: 3,
+      total: 3,
+      quitado: true,
+      emRevisao: 0,
+    });
+  });
+
+  it("distingue 'não pagou nada' de 'pagou e está na fila' — o caso da Melissa", () => {
+    const naoPagou = carneProgress({
+      installmentsTotal: 3,
+      installments: inst("PENDING", "PENDING", "PENDING"),
+    });
+    const pagouEsperaRevisao = carneProgress({
+      installmentsTotal: 3,
+      installments: inst("AWAITING_REVIEW", "PENDING", "PENDING"),
+    });
+    // Os dois mostram 0/3 — o emRevisao é o que separa um do outro.
+    expect(naoPagou.pagas).toBe(0);
+    expect(pagouEsperaRevisao.pagas).toBe(0);
+    expect(naoPagou.emRevisao).toBe(0);
+    expect(pagouEsperaRevisao.emRevisao).toBe(1);
   });
 
   it("sem installmentsTotal, cai para a contagem de parcelas", () => {
@@ -101,5 +136,6 @@ describe("carneProgress", () => {
     expect(p.carne).toBe(false);
     expect(p.total).toBe(2);
     expect(p.pagas).toBe(1);
+    expect(p.emRevisao).toBe(0);
   });
 });
