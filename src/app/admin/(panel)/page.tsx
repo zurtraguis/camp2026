@@ -359,22 +359,31 @@ function CarneCell({
 }) {
   if (!payment) return <span className="text-muted">—</span>;
 
-  const { carne, pagas, total, quitado } = carneProgress(payment);
+  const { carne, pagas, total, quitado, emRevisao } = carneProgress(payment);
   if (!carne) return <span className="text-muted">À vista</span>;
 
   return (
-    <Badge
-      className={
-        quitado
-          ? "border-verde-limao/30 bg-verde-limao/10 text-verde-limao"
-          : "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol"
-      }
-    >
-      <span className="tabular-nums">
-        {pagas}/{total}
-      </span>
-      <span className="sr-only"> parcelas confirmadas</span>
-    </Badge>
+    <div className="flex flex-col items-start gap-1">
+      <Badge
+        className={
+          quitado
+            ? "border-verde-limao/30 bg-verde-limao/10 text-verde-limao"
+            : emRevisao > 0
+              ? "border-info/30 bg-info/10 text-info"
+              : "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol"
+        }
+      >
+        <span className="tabular-nums">
+          {pagas}/{total}
+        </span>
+        <span className="sr-only"> parcelas confirmadas</span>
+      </Badge>
+      {emRevisao > 0 && (
+        <span className="whitespace-nowrap text-[11px] text-info">
+          {emRevisao} em revisão
+        </span>
+      )}
+    </div>
   );
 }
 
