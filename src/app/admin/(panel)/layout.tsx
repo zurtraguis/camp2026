@@ -10,6 +10,7 @@
  *       ├── layout.tsx   ← chama requireAdmin(); redireciona para /admin/login
  *       ├── page.tsx     ← dashboard (/admin)
  *       ├── pagamentos/
+ *       ├── em-aberto/
  *       ├── tribos/
  *       ├── inscricao/[id]/
  *       └── export/
@@ -55,6 +56,7 @@ export default async function AdminPanelLayout({
             <NavLink href="/admin">Inscrições</NavLink>
             <NavLink href="/admin/tribos">Tribos</NavLink>
             <NavLink href="/admin/pagamentos">Pagamentos</NavLink>
+            <NavLink href="/admin/em-aberto">Em aberto</NavLink>
           </nav>
 
           {/* Spacer */}
