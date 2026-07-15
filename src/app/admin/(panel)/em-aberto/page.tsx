@@ -4,6 +4,10 @@
  * Complementa /admin/pagamentos: lá é a fila de REVISÃO (só o que tem
  * comprovante esperando decisão); aqui é o que está EM ABERTO (o dinheiro que
  * ainda não entrou), com ou sem comprovante enviado.
+ *
+ * Também é onde se dá BAIXA MANUAL: dinheiro que entrou fora do site (espécie
+ * na igreja, cartão, Pix no particular) não tem comprovante para a fila
+ * revisar, e sem isso ficaria em aberto para sempre.
  */
 
 import { requireAdmin } from "@/lib/auth";
@@ -11,9 +15,28 @@ import { db } from "@/lib/db";
 import { formatBRL, formatPhone } from "@/lib/format";
 import { saldoDoPagamento, ordenarPorUrgencia } from "@/lib/cobranca";
 import { Badge, Callout, Card } from "@/components/ui";
+import { BaixaManualForm, type ParcelaEmAberto } from "./BaixaManualForm";
 import Link from "next/link";
 
 export const metadata = { title: "Em aberto" };
+
+/** Parcelas ainda não confirmadas, da mais antiga para a mais nova. */
+function parcelasEmAberto(
+  installments: { id: string; number: number; amountCents: number; dueDate: Date; status: string }[],
+  hoje: Date,
+): ParcelaEmAberto[] {
+  return installments
+    .filter((i) => i.status !== "CONFIRMED")
+    .sort((a, b) => a.number - b.number)
+    .map((i) => {
+      const venceu = i.dueDate.getTime() < hoje.getTime();
+      const data = i.dueDate.toLocaleDateString("pt-BR");
+      return {
+        id: i.id,
+        label: `${i.number}ª · ${formatBRL(i.amountCents)} · ${venceu ? "venceu" : "vence"} ${data}`,
+      };
+    });
+}
 
 export default async function EmAbertoPage() {
   await requireAdmin();
@@ -104,11 +127,13 @@ export default async function EmAbertoPage() {
                 <Th>Pago</Th>
                 <Th>Em aberto</Th>
                 <Th>Situação</Th>
+                <Th>Baixa</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface/50">
               {linhas.map(({ reg, saldo }) => {
                 const telefone = reg.guardian?.phone ?? reg.phone;
+                const parcelas = parcelasEmAberto(reg.payment!.installments, hoje);
                 return (
                   <tr key={reg.id} className="transition-colors hover:bg-surface-2/80">
                     <Td>
@@ -159,6 +184,23 @@ export default async function EmAbertoPage() {
                     </Td>
                     <Td>
                       <SituacaoBadge saldo={saldo} />
+                    </Td>
+                    <Td className="align-top">
+                      {saldo.carne ? (
+                        // Um carnê em aberto sempre tem parcela em aberto; se não
+                        // tiver, os dados estão inconsistentes — melhor não
+                        // oferecer um formulário sem alvo.
+                        parcelas.length > 0 ? (
+                          <BaixaManualForm nome={reg.fullName} parcelas={parcelas} />
+                        ) : (
+                          <span className="text-xs text-muted">—</span>
+                        )
+                      ) : (
+                        <BaixaManualForm
+                          nome={reg.fullName}
+                          paymentId={reg.payment!.id}
+                        />
+                      )}
                     </Td>
                   </tr>
                 );

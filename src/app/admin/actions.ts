@@ -13,8 +13,14 @@ import {
   adminLoginSchema,
   pixReviewSchema,
   installmentReviewSchema,
+  baixaManualSchema,
 } from "@/lib/validation";
-import { reviewPixPayment, reviewInstallment } from "@/lib/payment.service";
+import {
+  reviewPixPayment,
+  reviewInstallment,
+  baixaManualPagamento,
+  baixaManualParcela,
+} from "@/lib/payment.service";
 import { rebalance, type Camper, type Gender } from "@/lib/tribos";
 
 export interface LoginState {
@@ -126,6 +132,52 @@ export async function reviewInstallmentAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao revisar parcela.",
+    };
+  }
+}
+
+/**
+ * Baixa manual — confirma dinheiro que entrou fora do site (espécie na igreja,
+ * cartão, Pix no particular). Não há comprovante para conferir: quem clica é a
+ * evidência, então o admin fica gravado em reviewedById e a forma no reviewNote.
+ */
+export async function baixaManualAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const parsed = baixaManualSchema.safeParse({
+    paymentId: formData.get("paymentId") || undefined,
+    installmentId: formData.get("installmentId") || undefined,
+    forma: formData.get("forma"),
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success) return { ok: false, message: "Dados inválidos." };
+
+  try {
+    if (parsed.data.installmentId) {
+      await baixaManualParcela(
+        parsed.data.installmentId,
+        admin.id,
+        parsed.data.forma,
+        parsed.data.note,
+      );
+    } else {
+      await baixaManualPagamento(
+        parsed.data.paymentId!,
+        admin.id,
+        parsed.data.forma,
+        parsed.data.note,
+      );
+    }
+    revalidatePath("/admin");
+    revalidatePath("/admin/em-aberto");
+    revalidatePath("/admin/pagamentos");
+    return { ok: true, message: "Baixa registrada." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao dar baixa.",
     };
   }
 }

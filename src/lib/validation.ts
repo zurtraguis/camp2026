@@ -122,3 +122,20 @@ export const installmentReviewSchema = z.object({
   decision: z.enum(["confirm", "reject"]),
   note: z.string().trim().max(500).optional(),
 });
+
+/**
+ * Baixa manual: confirma dinheiro que entrou fora do site (espécie, cartão,
+ * Pix no particular). Exatamente UM alvo — pagamento à vista OU parcela.
+ * `forma` é obrigatória: sem comprovante no storage, ela é a única trilha de
+ * como o dinheiro entrou.
+ */
+export const baixaManualSchema = z
+  .object({
+    paymentId: z.string().min(1).optional(),
+    installmentId: z.string().min(1).optional(),
+    forma: z.enum(["DINHEIRO", "CARTAO", "PIX", "OUTRO"]),
+    note: z.string().trim().max(500).optional(),
+  })
+  .refine((d) => Boolean(d.paymentId) !== Boolean(d.installmentId), {
+    message: "Informe o pagamento OU a parcela, nunca os dois.",
+  });
