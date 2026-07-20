@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import type { ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -14,8 +20,12 @@ import {
 } from "@/components/ui";
 import { TRIAGE_FLAGS, TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { splitInstallments } from "@/lib/carne";
+import { applyPercentOff } from "@/lib/coupon";
 import { formatBRL, ageOn, MIN_AGE, MAX_AGE } from "@/lib/format";
-import { createRegistrationAction } from "@/app/inscricao/actions";
+import {
+  createRegistrationAction,
+  validateCouponAction,
+} from "@/app/inscricao/actions";
 import type { RegistrationFormState } from "@/app/inscricao/actions";
 
 /* ─── Types ─── */
@@ -227,6 +237,52 @@ export function RegistrationForm({
     cardOnlineEnabled ? "CARD" : "PIX",
   );
   const [installments, setInstallments] = useState(1);
+
+  // Cupom: `couponInput` é o que está digitado; `coupon` é o que foi validado e
+  // aplicado (dá o preço efetivo). `couponMsg` é o retorno do servidor.
+  const [couponInput, setCouponInput] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; percentOff: number } | null>(
+    null,
+  );
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
+  const [couponPending, startCoupon] = useTransition();
+
+  // Preço efetivo (com desconto, se um cupom foi aplicado). Recalculado no
+  // cliente a partir do % confirmado — o carnê e o total usam este valor.
+  const effectivePrice = coupon
+    ? applyPercentOff(priceCents, coupon.percentOff)
+    : priceCents;
+
+  function applyCoupon() {
+    const code = couponInput.trim();
+    if (!code) {
+      setCoupon(null);
+      setCouponMsg({ ok: false, text: "Digite um código." });
+      return;
+    }
+    startCoupon(async () => {
+      const fd = new FormData();
+      fd.set("couponCode", code);
+      fd.set("priceCents", String(priceCents));
+      const res = await validateCouponAction({ ok: false }, fd);
+      if (res.ok && res.percentOff != null) {
+        setCoupon({ code: code.toUpperCase(), percentOff: res.percentOff });
+        setCouponMsg({ ok: true, text: res.message ?? "Cupom aplicado." });
+      } else {
+        setCoupon(null);
+        setCouponMsg({ ok: false, text: res.message ?? "Cupom inválido." });
+      }
+    });
+  }
+
+  function clearCoupon() {
+    setCoupon(null);
+    setCouponInput("");
+    setCouponMsg(null);
+  }
+
   const formRef = useRef<HTMLFormElement>(null);
   const firstRender = useRef(true);
   // Snapshot do que foi enviado: o React reseta o <form action> após a action,
@@ -848,9 +904,85 @@ export function RegistrationForm({
             <p className="text-xs font-condensed uppercase tracking-widest text-muted">
               {loteName}
             </p>
-            <p className="font-display text-[clamp(3.5rem,9vw,5.8rem)] leading-none text-verde-limao">
-              {formatBRL(priceCents)}
-            </p>
+            {coupon ? (
+              <>
+                <p className="text-lg text-muted line-through">
+                  {formatBRL(priceCents)}
+                </p>
+                <p className="font-display text-[clamp(3.5rem,9vw,5.8rem)] leading-none text-verde-limao">
+                  {formatBRL(effectivePrice)}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-verde-limao">
+                  Cupom {coupon.code} — {coupon.percentOff}% de desconto
+                </p>
+              </>
+            ) : (
+              <p className="font-display text-[clamp(3.5rem,9vw,5.8rem)] leading-none text-verde-limao">
+                {formatBRL(priceCents)}
+              </p>
+            )}
+          </div>
+
+          {/* Cupom de desconto — o código só é enviado quando aplicado (hidden
+              abaixo). Assim ninguém envia um código digitado e não validado, o
+              que faria a inscrição falhar no servidor. */}
+          <input type="hidden" name="couponCode" value={coupon?.code ?? ""} />
+          <div className="rounded-sm border border-verde-limao/15 bg-[#0b0b0a]/40 p-4">
+            <label
+              htmlFor="couponInput"
+              className="mb-1.5 block text-sm font-medium text-creme"
+            >
+              Tem um cupom de desconto?
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                id="couponInput"
+                type="text"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyCoupon();
+                  }
+                }}
+                maxLength={40}
+                placeholder="Digite o código"
+                autoCapitalize="characters"
+                disabled={couponPending || Boolean(coupon)}
+                className="w-auto flex-1 uppercase"
+              />
+              {coupon ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearCoupon}
+                >
+                  Remover
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={applyCoupon}
+                  disabled={couponPending}
+                  aria-busy={couponPending}
+                >
+                  {couponPending ? "Validando…" : "Aplicar"}
+                </Button>
+              )}
+            </div>
+            {couponMsg && (
+              <p
+                className={`mt-2 text-xs font-medium ${
+                  couponMsg.ok ? "text-verde-limao" : "text-danger"
+                }`}
+              >
+                {couponMsg.text}
+              </p>
+            )}
           </div>
 
           <fieldset className="space-y-3">
@@ -900,7 +1032,7 @@ export function RegistrationForm({
                     { n: 3, label: "3x no carnê", desc: "3 parcelas mensais" },
                   ] as const
                 ).map(({ n, label, desc }) => {
-                  const parts = splitInstallments(priceCents, n);
+                  const parts = splitInstallments(effectivePrice, n);
                   const per = parts[parts.length - 1];
                   const first = parts[0];
                   return (

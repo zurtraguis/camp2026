@@ -13,6 +13,8 @@ import type { RegistrationInput } from "@/lib/validation";
 import { env } from "@/lib/env";
 import { getActiveLote } from "@/lib/lote.service";
 import { isCarne, splitInstallments, installmentDueDates } from "@/lib/carne";
+import { applyPercentOff } from "@/lib/coupon";
+import { resolveAndConsumeCoupon } from "@/lib/coupon.service";
 
 export interface CreatedRegistration {
   id: string;
@@ -59,12 +61,26 @@ export async function createRegistration(
       const tribo = chooseTribo(input.gender, age, counts);
       const publicCode = makePublicCode();
 
+      // Cupom (opcional): valida e CONSOME dentro da tx. O desconto incide sobre
+      // o preço do lote e vale tanto à vista quanto nas parcelas do carnê. Se o
+      // código foi informado mas não é utilizável, resolveAndConsumeCoupon lança
+      // e a inscrição inteira falha — a pessoa remove o cupom e reenvia.
+      const coupon = await resolveAndConsumeCoupon(
+        tx,
+        input.couponCode ?? "",
+        new Date(),
+      );
+      const originalPriceCents = active.priceCents;
+      const finalPriceCents = coupon
+        ? applyPercentOff(originalPriceCents, coupon.percentOff)
+        : originalPriceCents;
+
       // Carnê Pix parcelado (2x/3x): monta as parcelas (valor + vencimento).
       // À vista (Pix ou cartão) segue o fluxo de pagamento único.
       const carne = input.paymentMethod === "PIX" && isCarne(input.installments);
       const installmentData = carne
         ? (() => {
-            const amounts = splitInstallments(active.priceCents, input.installments);
+            const amounts = splitInstallments(finalPriceCents, input.installments);
             const dueDates = installmentDueDates(new Date(), input.installments);
             return amounts.map((amountCents, i) => ({
               number: i + 1,
@@ -130,10 +146,15 @@ export async function createRegistration(
             create: {
               method: input.paymentMethod,
               status: "PENDING",
-              amountCents: active.priceCents,
+              amountCents: finalPriceCents,
               loteOrder: active.order,
               pixTxid: input.paymentMethod === "PIX" ? publicCode : null,
               installmentsTotal: carne ? input.installments : null,
+              // Auditoria do desconto (null quando não houve cupom).
+              couponId: coupon?.couponId ?? null,
+              couponCode: coupon?.code ?? null,
+              discountPercent: coupon?.percentOff ?? null,
+              originalAmountCents: coupon ? originalPriceCents : null,
               ...(installmentData
                 ? { installments: { create: installmentData } }
                 : {}),
@@ -146,7 +167,7 @@ export async function createRegistration(
         id: registration.id,
         publicCode,
         tribo,
-        amountCents: active.priceCents,
+        amountCents: finalPriceCents,
         loteOrder: active.order,
       };
     },

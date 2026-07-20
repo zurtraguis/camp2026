@@ -14,7 +14,38 @@ import {
   submitPixReceipt,
   submitInstallmentReceipt,
 } from "@/lib/payment.service";
+import { previewCoupon } from "@/lib/coupon.service";
 import { env } from "@/lib/env";
+
+export interface CouponPreviewState {
+  ok: boolean;
+  message?: string;
+  percentOff?: number;
+  finalCents?: number;
+}
+
+/**
+ * Valida o cupom para o preview ao vivo no formulário (NÃO consome). Recebe o
+ * código e o preço do lote; devolve o percentual e o valor já com desconto.
+ */
+export async function validateCouponAction(
+  _prev: CouponPreviewState,
+  formData: FormData,
+): Promise<CouponPreviewState> {
+  const code = String(formData.get("couponCode") ?? "");
+  const priceCents = Number(formData.get("priceCents") ?? "0");
+  if (!code.trim()) return { ok: false, message: "Digite um código." };
+  if (!Number.isFinite(priceCents) || priceCents <= 0) {
+    return { ok: false, message: "Preço indisponível." };
+  }
+  const preview = await previewCoupon(code, priceCents);
+  return {
+    ok: preview.ok,
+    message: preview.message,
+    percentOff: preview.percentOff,
+    finalCents: preview.finalCents,
+  };
+}
 
 export interface RegistrationFormState {
   ok: boolean;
@@ -59,6 +90,7 @@ export async function createRegistrationAction(
     consentImage: bool(formData.get("consentImage")),
     paymentMethod: String(formData.get("paymentMethod") ?? ""),
     installments: String(formData.get("installments") ?? "1"),
+    couponCode: String(formData.get("couponCode") ?? ""),
   };
 
   const parsed = registrationSchema.safeParse(raw);

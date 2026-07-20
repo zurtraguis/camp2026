@@ -117,6 +117,9 @@ type FullRegistration = {
       dueDate: Date;
       status: string;
     }[];
+    couponCode: string | null;
+    discountPercent: number | null;
+    originalAmountCents: number | null;
     pixReceiptPath: string | null;
     pixTxid: string | null;
     reviewedAt: Date | null;
@@ -274,6 +277,20 @@ export default async function InscricaoDetailPage({ params }: Props) {
                 label="Valor"
                 value={formatBRL(reg.payment.amountCents)}
               />
+              {reg.payment.couponCode && (
+                <>
+                  <DataRow
+                    label="Valor original"
+                    value={formatBRL(
+                      reg.payment.originalAmountCents ?? reg.payment.amountCents,
+                    )}
+                  />
+                  <DataRow
+                    label="Cupom"
+                    value={`${reg.payment.couponCode} (−${reg.payment.discountPercent ?? 0}%)`}
+                  />
+                </>
+              )}
               <DataRow label="Forma" value={formaLabel} />
               {reg.lote && (
                 <DataRow label="Lote" value={reg.lote.name} />
