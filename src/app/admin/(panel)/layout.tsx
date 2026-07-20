@@ -57,6 +57,7 @@ export default async function AdminPanelLayout({
             <NavLink href="/admin/tribos">Tribos</NavLink>
             <NavLink href="/admin/pagamentos">Pagamentos</NavLink>
             <NavLink href="/admin/em-aberto">Em aberto</NavLink>
+            <NavLink href="/admin/cupons">Cupons</NavLink>
           </nav>
 
           {/* Spacer */}
@@ -88,6 +89,8 @@ export default async function AdminPanelLayout({
           <NavLink href="/admin">Inscrições</NavLink>
           <NavLink href="/admin/tribos">Tribos</NavLink>
           <NavLink href="/admin/pagamentos">Pagamentos</NavLink>
+          <NavLink href="/admin/em-aberto">Em aberto</NavLink>
+          <NavLink href="/admin/cupons">Cupons</NavLink>
         </nav>
       </header>
 

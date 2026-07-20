@@ -242,6 +242,14 @@ model Payment {
   installmentsTotal Int?
   installments      Installment[]
 
+  // Cupom de desconto. amountCents (e as parcelas) já guardam o valor COM
+  // desconto; originalAmountCents preserva o preço cheio para auditoria.
+  couponId            String?
+  coupon              Coupon? @relation(fields: [couponId], references: [id])
+  couponCode          String? // snapshot do código no momento da inscrição
+  discountPercent     Int? // % aplicado
+  originalAmountCents Int? // preço antes do desconto
+
   // Stripe (cartão)
   stripeSessionId       String? @unique
   stripePaymentIntentId String?
@@ -290,4 +298,23 @@ model Installment {
 
   @@unique([paymentId, number])
   @@index([status])
+}
+
+// Cupom de desconto percentual sobre o preço da inscrição. Código em maiúsculas.
+// `uses` é incrementado a cada inscrição que usa o cupom (dentro da transação de
+// criação), e `maxUses` trava novos usos quando atingido.
+model Coupon {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  percentOff Int // 1..100
+  active     Boolean   @default(true)
+  expiresAt  DateTime? // validade opcional (null = sem validade)
+  maxUses    Int? // limite de usos (null = ilimitado)
+  uses       Int       @default(0)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  payments Payment[]
+
+  @@index([active])
 }

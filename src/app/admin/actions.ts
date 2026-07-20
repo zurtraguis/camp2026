@@ -14,7 +14,9 @@ import {
   pixReviewSchema,
   installmentReviewSchema,
   baixaManualSchema,
+  couponSchema,
 } from "@/lib/validation";
+import { createCoupon, setCouponActive } from "@/lib/coupon.service";
 import {
   reviewPixPayment,
   reviewInstallment,
@@ -178,6 +180,62 @@ export async function baixaManualAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao dar baixa.",
+    };
+  }
+}
+
+/** Cria um cupom de desconto. */
+export async function createCouponAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = couponSchema.safeParse({
+    code: formData.get("code"),
+    percentOff: formData.get("percentOff"),
+    expiresAt: formData.get("expiresAt"),
+    maxUses: formData.get("maxUses"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+  try {
+    await createCoupon({
+      code: parsed.data.code,
+      percentOff: parsed.data.percentOff,
+      expiresAt: parsed.data.expiresAt ?? null,
+      maxUses: parsed.data.maxUses ?? null,
+    });
+    revalidatePath("/admin/cupons");
+    return { ok: true, message: "Cupom criado." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao criar o cupom.",
+    };
+  }
+}
+
+/** Liga/desliga um cupom. */
+export async function toggleCouponAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const active = String(formData.get("active") ?? "") === "true";
+  if (!id) return { ok: false, message: "Cupom inválido." };
+  try {
+    await setCouponActive(id, active);
+    revalidatePath("/admin/cupons");
+    return { ok: true, message: active ? "Cupom ativado." : "Cupom desativado." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao atualizar.",
     };
   }
 }

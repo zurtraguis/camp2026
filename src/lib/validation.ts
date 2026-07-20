@@ -85,6 +85,9 @@ export const registrationSchema = z
     // Parcelas do carnê Pix: 1 = à vista (padrão); 2 ou 3 = carnê parcelado.
     // Só é permitido parcelar no Pix.
     installments: z.coerce.number().int().min(1).max(3).default(1),
+    // Cupom de desconto (opcional). "" = sem cupom. A validade/limite do cupom
+    // são checados no servidor ao criar a inscrição.
+    couponCode: z.string().trim().max(40).optional(),
   })
   .superRefine((data, ctx) => {
     const age = ageOn(new Date(data.birthDate));
@@ -105,6 +108,31 @@ export const registrationSchema = z
   });
 
 export type RegistrationInput = z.infer<typeof registrationSchema>;
+
+/** Criação de cupom no admin. Campos vazios de validade/limite viram undefined. */
+const emptyToUndef = (v: unknown) =>
+  v === "" || v === null || v === undefined ? undefined : v;
+
+export const couponSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(3, "Código muito curto (mín. 3).")
+    .max(40)
+    .regex(/^[A-Za-z0-9-]+$/, "Use apenas letras, números ou hífen."),
+  percentOff: z.coerce
+    .number({ error: "Informe o percentual." })
+    .int("Percentual inteiro.")
+    .min(1, "Mínimo 1%.")
+    .max(100, "Máximo 100%."),
+  expiresAt: z.preprocess(emptyToUndef, z.coerce.date().optional()),
+  maxUses: z.preprocess(
+    emptyToUndef,
+    z.coerce.number().int().min(1, "Limite mínimo 1.").optional(),
+  ),
+});
+
+export type CouponInput = z.infer<typeof couponSchema>;
 
 export const adminLoginSchema = z.object({
   email: z.string().email("E-mail inválido"),
