@@ -100,6 +100,7 @@ function validateStep(form: HTMLFormElement, step: Step): Record<string, string>
     if (cpf && cpf.length !== 11) e.cpf = "CPF deve ter 11 dígitos";
     const em = val("email");
     if (em && !isEmail(em)) e.email = "E-mail inválido";
+    if (val("church").trim().length < 2) e.church = "Informe a igreja";
   } else if (step === 1) {
     if (val("guardianName").length < 3)
       e.guardianName = "Informe o nome do responsável";
@@ -500,9 +501,17 @@ export function RegistrationForm({
               label="Igreja"
               htmlFor="church"
               error={err.church}
+              required
               className="sm:col-span-2"
             >
-              <Input id="church" name="church" type="text" maxLength={120} />
+              <Input
+                id="church"
+                name="church"
+                type="text"
+                maxLength={120}
+                required
+                aria-required="true"
+              />
             </Field>
           </div>
 

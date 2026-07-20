@@ -45,7 +45,7 @@ export const registrationSchema = z
     shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XG"], {
       error: "Selecione o tamanho da camiseta",
     }),
-    church: z.string().trim().max(120).optional(),
+    church: z.string().trim().min(2, "Informe a igreja").max(120),
     city: z.string().trim().max(80).optional(),
 
     // Responsável legal
