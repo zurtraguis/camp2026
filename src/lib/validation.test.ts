@@ -11,6 +11,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
     phone: "11999998888",
     email: "",
     shirtSize: "M",
+    church: "Igreja Batista Central",
     guardianName: "João Souza",
     guardianCpf: "12345678901",
     guardianPhone: "11988887777",
@@ -40,6 +41,15 @@ describe("registrationSchema", () => {
       validInput({ shirtSize: "XXG" }),
     );
     expect(invalid.success).toBe(false);
+  });
+
+  it("exige a igreja", () => {
+    expect(registrationSchema.safeParse(validInput({ church: undefined })).success).toBe(
+      false,
+    );
+    expect(registrationSchema.safeParse(validInput({ church: "" })).success).toBe(false);
+    expect(registrationSchema.safeParse(validInput({ church: "  " })).success).toBe(false);
+    expect(registrationSchema.safeParse(validInput({ church: "IBC" })).success).toBe(true);
   });
 
   it("rejeita idade fora de 12–19", () => {
