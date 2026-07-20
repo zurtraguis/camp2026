@@ -6,16 +6,16 @@ import { resolveActiveLote, type ActiveLote } from "@/lib/lotes";
 export type { ActiveLote } from "@/lib/lotes";
 
 /**
- * Lotes vendem em ordem: preenchida a capacidade do lote 1, o lote 2 (mais caro)
- * passa a vigorar, e assim por diante. "Vendido" conta inscrições não canceladas
- * (reserva a vaga enquanto o pagamento é processado/revisado).
+ * O PREÇO vigente é definido pela DATA (cronograma em @/lib/lotes); a
+ * DISPONIBILIDADE é um teto global de vagas. "Vendido" conta inscrições não
+ * canceladas (reserva a vaga enquanto o pagamento é processado/revisado).
  */
 export async function getActiveLote(): Promise<ActiveLote | null> {
   const [lotes, sold] = await Promise.all([
     db.lote.findMany({ where: { active: true }, orderBy: { order: "asc" } }),
     db.registration.count({ where: { status: { not: "CANCELLED" } } }),
   ]);
-  return resolveActiveLote(lotes, sold);
+  return resolveActiveLote(lotes, sold, new Date());
 }
 
 export async function listLotes() {

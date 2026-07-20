@@ -50,7 +50,7 @@ export async function ValoresSection() {
                   </Badge>
                   <Badge>
                     {lote.remainingInLote}{" "}
-                    {lote.remainingInLote === 1 ? "vaga" : "vagas"} neste lote
+                    {lote.remainingInLote === 1 ? "vaga restante" : "vagas restantes"}
                   </Badge>
                 </div>
 
