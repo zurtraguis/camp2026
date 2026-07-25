@@ -107,7 +107,7 @@ function validateStep(form: HTMLFormElement, step: Step): Record<string, string>
     if (ph.length < 10 || ph.length > 11)
       e.phone = "Telefone inválido — informe DDD + número";
     const cpf = digits(val("cpf"));
-    if (cpf && cpf.length !== 11) e.cpf = "CPF deve ter 11 dígitos";
+    if (cpf.length !== 11) e.cpf = "Informe o CPF do adolescente (11 dígitos)";
     const em = val("email");
     if (em && !isEmail(em)) e.email = "E-mail inválido";
     if (val("church").trim().length < 2) e.church = "Informe a igreja";
@@ -475,10 +475,11 @@ export function RegistrationForm({
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Field
-              label="CPF"
+              label="CPF do adolescente"
               htmlFor="cpf"
-              hint="Opcional"
+              hint="Do próprio adolescente, não do responsável"
               error={err.cpf}
+              required
             >
               <Input
                 id="cpf"
@@ -489,6 +490,8 @@ export function RegistrationForm({
                 maxLength={14}
                 placeholder="000.000.000-00"
                 onChange={applyMask(maskCpf)}
+                required
+                aria-required="true"
               />
             </Field>
 

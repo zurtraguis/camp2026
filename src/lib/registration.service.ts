@@ -41,6 +41,21 @@ export async function createRegistration(
 
   return db.$transaction(
     async (tx) => {
+      // Impede inscrição duplicada da MESMA pessoa (CPF do campista). É pelo CPF
+      // do adolescente, não do responsável — o pai pode ter mais de um filho. A
+      // checagem roda dentro da tx serializável: dois envios simultâneos com o
+      // mesmo CPF não passam os dois (o segundo aborta). O action faz um
+      // pré-check para a mensagem amigável no campo; este é o backstop.
+      const dup = await tx.registration.findFirst({
+        where: { cpf: input.cpf, status: { not: "CANCELLED" } },
+        select: { publicCode: true },
+      });
+      if (dup) {
+        throw new Error(
+          `Já existe uma inscrição para este CPF (${dup.publicCode}).`,
+        );
+      }
+
       // Reconstrói as contagens atuais por tribo/estrato dentro da transação.
       const grouped = await tx.registration.groupBy({
         by: ["tribo", "gender", "ageAtCamp"],
@@ -173,6 +188,26 @@ export async function createRegistration(
     },
     { isolationLevel: "Serializable" },
   );
+}
+
+/**
+ * Inscrição não-cancelada com este CPF de CAMPISTA (dígitos), se houver. Usada
+ * no pré-check do formulário para mostrar o erro no campo antes de submeter.
+ */
+export async function findActiveRegistrationByCpf(cpfDigits: string) {
+  return db.registration.findFirst({
+    where: { cpf: cpfDigits, status: { not: "CANCELLED" } },
+    select: { publicCode: true, fullName: true },
+  });
+}
+
+/**
+ * Exclui uma inscrição PERMANENTEMENTE. O cascade remove responsável, saúde,
+ * consentimento, pagamento e parcelas. Irreversível — usada pelo admin para
+ * limpar inscrições duplicadas.
+ */
+export async function deleteRegistration(id: string) {
+  await db.registration.delete({ where: { id } });
 }
 
 /**

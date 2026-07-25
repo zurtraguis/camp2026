@@ -39,7 +39,9 @@ export const registrationSchema = z
       .string()
       .refine((s) => !Number.isNaN(Date.parse(s)), "Data inválida"),
     gender: z.enum(["MALE", "FEMALE"], { error: "Selecione o gênero" }),
-    cpf: cpf.optional().or(z.literal("").transform(() => undefined)),
+    // CPF do CAMPISTA (não do responsável) — obrigatório e usado para impedir
+    // inscrição duplicada da mesma pessoa.
+    cpf: cpf,
     phone: phone,
     email: z.string().email("E-mail inválido").optional().or(z.literal("")),
     shirtSize: z.enum(["PP", "P", "M", "G", "GG", "XG"], {

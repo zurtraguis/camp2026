@@ -7,6 +7,7 @@ import { TRIBO_META } from "@/lib/tribos";
 import { TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { signedReceiptUrl } from "@/lib/storage";
 import { Badge, ButtonLink, Card } from "@/components/ui";
+import { DeleteRegistrationForm } from "./DeleteRegistrationForm";
 import Link from "next/link";
 
 interface Props {
@@ -524,11 +525,16 @@ export default async function InscricaoDetailPage({ params }: Props) {
         </section>
       )}
 
-      {/* Back */}
-      <div>
+      {/* Back + excluir (zona de perigo, separada) */}
+      <div className="flex flex-wrap items-start justify-between gap-4 border-t border-border pt-6">
         <ButtonLink href="/admin" variant="secondary" size="sm">
           Voltar às inscrições
         </ButtonLink>
+        <DeleteRegistrationForm
+          id={reg.id}
+          publicCode={reg.publicCode}
+          fullName={reg.fullName}
+        />
       </div>
     </div>
   );
