@@ -8,6 +8,7 @@ import {
   createRegistration,
   getRegistrationByCode,
   findRegistrationsByGuardianCpf,
+  findActiveRegistrationByCpf,
 } from "@/lib/registration.service";
 import {
   createCheckoutSession,
@@ -101,6 +102,20 @@ export async function createRegistrationAction(
       if (!errors[key]) errors[key] = issue.message;
     }
     return { ok: false, errors, message: "Revise os campos destacados." };
+  }
+
+  // Bloqueio de duplicata pelo CPF do CAMPISTA (não do responsável): mostra o
+  // erro no campo e reabre o Step 0. A checagem autoritativa (contra corrida)
+  // fica na transação de createRegistration.
+  const existing = await findActiveRegistrationByCpf(parsed.data.cpf);
+  if (existing) {
+    return {
+      ok: false,
+      errors: {
+        cpf: `Já existe uma inscrição para este CPF (${existing.publicCode} — ${existing.fullName}).`,
+      },
+      message: "Este adolescente já tem uma inscrição.",
+    };
   }
 
   const h = await headers();

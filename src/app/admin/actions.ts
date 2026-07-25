@@ -17,6 +17,7 @@ import {
   couponSchema,
 } from "@/lib/validation";
 import { createCoupon, setCouponActive } from "@/lib/coupon.service";
+import { deleteRegistration } from "@/lib/registration.service";
 import {
   reviewPixPayment,
   reviewInstallment,
@@ -238,6 +239,31 @@ export async function toggleCouponAction(
       message: err instanceof Error ? err.message : "Falha ao atualizar.",
     };
   }
+}
+
+/**
+ * Exclui uma inscrição PERMANENTEMENTE (cascade: responsável, saúde,
+ * consentimento, pagamento, parcelas). Usada para limpar duplicatas. Em sucesso
+ * redireciona para a lista; por isso o redirect fica fora do try (ele "lança"
+ * o NEXT_REDIRECT, que o catch não deve engolir).
+ */
+export async function deleteRegistrationAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Inscrição inválida." };
+  try {
+    await deleteRegistration(id);
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao excluir.",
+    };
+  }
+  revalidatePath("/admin");
+  redirect("/admin");
 }
 
 /** Re-balanceia todas as tribos (snake draft offline). Reatribui todos. */

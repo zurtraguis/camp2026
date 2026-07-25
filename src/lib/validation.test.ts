@@ -7,7 +7,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
     fullName: "Maria Clara Souza",
     birthDate: "2010-03-10",
     gender: "FEMALE",
-    cpf: "",
+    cpf: "98765432100",
     phone: "11999998888",
     email: "",
     shirtSize: "M",
@@ -30,6 +30,20 @@ describe("registrationSchema", () => {
   it("aceita uma inscrição válida", () => {
     const r = registrationSchema.safeParse(validInput());
     expect(r.success).toBe(true);
+  });
+
+  it("exige o CPF do adolescente", () => {
+    expect(registrationSchema.safeParse(validInput({ cpf: "" })).success).toBe(false);
+    expect(registrationSchema.safeParse(validInput({ cpf: undefined })).success).toBe(
+      false,
+    );
+    expect(registrationSchema.safeParse(validInput({ cpf: "123" })).success).toBe(false);
+  });
+
+  it("normaliza o CPF do adolescente para dígitos", () => {
+    const r = registrationSchema.safeParse(validInput({ cpf: "987.654.321-00" }));
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.cpf).toBe("98765432100");
   });
 
   it("exige o tamanho da camiseta", () => {
