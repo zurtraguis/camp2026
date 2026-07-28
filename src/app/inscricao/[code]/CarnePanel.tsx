@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useFormStatus } from "react-dom";
 import { Button, Callout, Field, Badge } from "@/components/ui";
 import { formatBRL } from "@/lib/format";
+import { RECEIPT_ACCEPT, checkReceiptFile } from "@/lib/receipt-check";
 import { submitInstallmentReceiptAction } from "@/app/inscricao/actions";
 import type { PixUploadState } from "@/app/inscricao/actions";
 
@@ -95,6 +96,8 @@ function InstallmentCard({
     { ok: false },
   );
   const [copied, setCopied] = useState(false);
+  // Erro do arquivo escolhido (validação no cliente, antes do envio).
+  const [fileErr, setFileErr] = useState<string | undefined>(undefined);
 
   const open =
     inst.status === "PENDING" ||
@@ -197,15 +200,21 @@ function InstallmentCard({
                 label={`Comprovante da parcela ${inst.number}`}
                 htmlFor={`receipt_${inst.number}`}
                 hint="Imagem (JPG, PNG, WEBP) ou PDF — máx. 10 MB"
-                error={undefined}
+                error={fileErr}
               >
                 <input
                   id={`receipt_${inst.number}`}
                   name="receipt"
                   type="file"
-                  accept="image/*,application/pdf"
+                  accept={RECEIPT_ACCEPT}
                   required
                   aria-required="true"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    const err = f ? checkReceiptFile(f) : undefined;
+                    setFileErr(err ?? undefined);
+                    if (err) e.target.value = "";
+                  }}
                   className="w-full cursor-pointer rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-creme file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-verde-limao/10 file:px-3 file:py-1 file:text-xs file:font-medium file:text-verde-limao hover:file:bg-verde-limao/20"
               />
               </Field>

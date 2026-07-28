@@ -3,6 +3,9 @@ import "server-only";
 import { AwsClient } from "aws4fetch";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { MAX_RECEIPT_BYTES } from "@/lib/receipt-check";
+
+export { MAX_RECEIPT_BYTES };
 
 /**
  * Upload de comprovantes Pix para um bucket PRIVADO.
@@ -19,7 +22,6 @@ import { env } from "@/lib/env";
  *  - caminho prefixado por registrationId para isolamento.
  */
 
-export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_RECEIPT_MIME = [
   "image/jpeg",
   "image/png",
