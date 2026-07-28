@@ -12,6 +12,9 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Sua Inscrição",
+  // Esta página mostra nome do campista, valor e dados de pagamento a quem tem
+  // o código. Fora do índice de buscadores (o robots.txt reforça).
+  robots: { index: false, follow: false },
 };
 
 interface PageProps {

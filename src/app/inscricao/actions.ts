@@ -109,10 +109,13 @@ export async function createRegistrationAction(
   // fica na transação de createRegistration.
   const existing = await findActiveRegistrationByCpf(parsed.data.cpf);
   if (existing) {
+    // Sem PII na resposta: antes devolvíamos código + NOME do adolescente para
+    // quem digitasse um CPF qualquer — listas de CPF são commodity, e o código
+    // dá acesso à página da inscrição e às ações de envio de comprovante.
     return {
       ok: false,
       errors: {
-        cpf: `Já existe uma inscrição para este CPF (${existing.publicCode} — ${existing.fullName}).`,
+        cpf: "Já existe uma inscrição ativa para este CPF. Se for seu filho, use “Encontrar inscrição” para acompanhá-la.",
       },
       message: "Este adolescente já tem uma inscrição.",
     };

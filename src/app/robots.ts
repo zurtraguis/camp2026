@@ -10,7 +10,9 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard", "/api/"],
+        // /inscricao/[code] expõe nome do campista, valor e Pix a quem tem o
+        // código — não pode virar resultado de busca. /admin idem.
+        disallow: ["/dashboard", "/api/", "/admin", "/inscricao/"],
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,

@@ -98,7 +98,7 @@ async function main() {
   for (const [name, gender, age] of DEMO_NAMES) {
     const tribo = chooseTribo(gender as Gender, age, counts);
     applyAssignment(tribo, gender as Gender, age, counts);
-    const code = makePublicCode(name.replace(/\s/g, "") + age);
+    const code = makePublicCode();
     const birthDate = new Date(2026, 5, 1);
     birthDate.setFullYear(birthDate.getFullYear() - age);
     const existing = await prisma.registration.findFirst({
