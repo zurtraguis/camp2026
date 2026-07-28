@@ -1,21 +1,23 @@
 /**
- * Cobrança — quem ainda deve, quanto, e há quantos dias.
+ * Em aberto — central de pagamentos do admin.
  *
- * Complementa /admin/pagamentos: lá é a fila de REVISÃO (só o que tem
- * comprovante esperando decisão); aqui é o que está EM ABERTO (o dinheiro que
- * ainda não entrou), com ou sem comprovante enviado.
- *
- * Também é onde se dá BAIXA MANUAL: dinheiro que entrou fora do site (espécie
- * na igreja, cartão, Pix no particular) não tem comprovante para a fila
- * revisar, e sem isso ficaria em aberto para sempre.
+ * Uma tela só para todo o ciclo: quem deve (e há quantos dias), comprovantes
+ * esperando decisão (revisar inline, com link assinado), baixa manual de
+ * dinheiro que entrou fora do site, e troca da forma de pagamento. A antiga
+ * /admin/pagamentos (fila de revisão separada) foi absorvida por esta tela e
+ * hoje só redireciona para cá.
  */
 
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatBRL, formatPhone } from "@/lib/format";
 import { saldoDoPagamento, ordenarPorUrgencia } from "@/lib/cobranca";
+import { alvosDisponiveis } from "@/lib/forma-pagamento";
+import { signedReceiptUrl } from "@/lib/storage";
 import { Badge, Callout, Card } from "@/components/ui";
 import { BaixaManualForm, type ParcelaEmAberto } from "./BaixaManualForm";
+import { ReviewForm } from "./ReviewForm";
+import { AlterarFormaForm } from "./AlterarFormaForm";
 import Link from "next/link";
 
 export const metadata = { title: "Em aberto" };
@@ -38,6 +40,24 @@ function parcelasEmAberto(
     });
 }
 
+/** Item com comprovante aguardando a decisão do admin. */
+interface ItemRevisao {
+  kind: "payment" | "installment";
+  id: string;
+  label: string;
+  receiptUrl: string | null;
+  temComprovante: boolean;
+}
+
+async function tentaAssinar(path: string | null): Promise<string | null> {
+  if (!path) return null;
+  try {
+    return await signedReceiptUrl(path, 900);
+  } catch {
+    return null;
+  }
+}
+
 export default async function EmAbertoPage() {
   await requireAdmin();
   const hoje = new Date();
@@ -58,18 +78,48 @@ export default async function EmAbertoPage() {
       .filter((l) => !l.saldo.quitado),
   );
 
+  // Comprovantes em revisão desta linha, com URL assinada (15 min) para abrir.
+  const linhasComRevisao = await Promise.all(
+    linhas.map(async (l) => {
+      const p = l.reg.payment!;
+      const revisao: ItemRevisao[] = [];
+      if (p.status === "AWAITING_REVIEW") {
+        revisao.push({
+          kind: "payment",
+          id: p.id,
+          label: `À vista · ${formatBRL(p.amountCents)}`,
+          receiptUrl: await tentaAssinar(p.pixReceiptPath),
+          temComprovante: Boolean(p.pixReceiptPath),
+        });
+      }
+      for (const i of p.installments) {
+        if (i.status === "AWAITING_REVIEW") {
+          revisao.push({
+            kind: "installment",
+            id: i.id,
+            label: `Parcela ${i.number} · ${formatBRL(i.amountCents)}`,
+            receiptUrl: await tentaAssinar(i.pixReceiptPath),
+            temComprovante: Boolean(i.pixReceiptPath),
+          });
+        }
+      }
+      return { ...l, revisao };
+    }),
+  );
+
   const totalAberto = linhas.reduce((s, l) => s + l.saldo.abertoCents, 0);
   const totalVencido = linhas
     .filter((l) => l.saldo.diasAtraso > 0)
     .reduce((s, l) => s + l.saldo.abertoCents, 0);
-  const emRevisao = linhas.filter((l) => l.saldo.emRevisao > 0).length;
+  const totalRevisao = linhasComRevisao.reduce((s, l) => s + l.revisao.length, 0);
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-3xl text-creme">Em aberto</h1>
         <p className="mt-1 text-sm text-muted">
-          Inscrições com saldo devedor — mais atrasadas primeiro
+          Saldo devedor, comprovantes para revisar e baixas — mais atrasados
+          primeiro
         </p>
       </div>
 
@@ -98,15 +148,12 @@ export default async function EmAbertoPage() {
           <p className="text-xs font-condensed uppercase tracking-wide text-muted">
             Esperando você
           </p>
-          <p className="font-display text-4xl tabular-nums text-info">{emRevisao}</p>
+          <p className="font-display text-4xl tabular-nums text-info">
+            {totalRevisao}
+          </p>
           <p className="text-xs text-muted">
-            {emRevisao === 1 ? "Comprovante enviado" : "Comprovantes enviados"} —{" "}
-            <Link
-              href="/admin/pagamentos"
-              className="text-info underline hover:no-underline focus-visible:outline-verde-limao rounded"
-            >
-              revisar
-            </Link>
+            {totalRevisao === 1 ? "Comprovante" : "Comprovantes"} aguardando
+            decisão — use o botão &quot;Revisar&quot; da linha
           </p>
         </Card>
       </section>
@@ -127,13 +174,14 @@ export default async function EmAbertoPage() {
                 <Th>Pago</Th>
                 <Th>Em aberto</Th>
                 <Th>Situação</Th>
-                <Th>Baixa</Th>
+                <Th>Ações</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface/50">
-              {linhas.map(({ reg, saldo }) => {
+              {linhasComRevisao.map(({ reg, saldo, revisao }) => {
                 const telefone = reg.guardian?.phone ?? reg.phone;
                 const parcelas = parcelasEmAberto(reg.payment!.installments, hoje);
+                const alvos = alvosDisponiveis(reg.payment!);
                 return (
                   <tr key={reg.id} className="transition-colors hover:bg-surface-2/80">
                     <Td>
@@ -170,7 +218,9 @@ export default async function EmAbertoPage() {
                     <Td className="whitespace-nowrap text-muted">
                       {saldo.carne
                         ? `Carnê ${reg.payment!.installmentsTotal ?? reg.payment!.installments.length}x`
-                        : "À vista"}
+                        : reg.payment!.method === "CARD"
+                          ? "Cartão"
+                          : "À vista"}
                     </Td>
                     <Td className="tabular-nums text-muted">
                       {formatBRL(saldo.pagoCents)}
@@ -186,21 +236,76 @@ export default async function EmAbertoPage() {
                       <SituacaoBadge saldo={saldo} />
                     </Td>
                     <Td className="align-top">
-                      {saldo.carne ? (
-                        // Um carnê em aberto sempre tem parcela em aberto; se não
-                        // tiver, os dados estão inconsistentes — melhor não
-                        // oferecer um formulário sem alvo.
-                        parcelas.length > 0 ? (
-                          <BaixaManualForm nome={reg.fullName} parcelas={parcelas} />
+                      <div className="flex flex-col items-start gap-2">
+                        {revisao.length > 0 && (
+                          <details className="group" open={revisao.length > 0 && linhasComRevisao.length <= 3}>
+                            <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded-md border border-info/40 bg-info/10 px-2.5 py-1 text-xs font-semibold text-info transition-colors hover:bg-info/20 focus-visible:outline-2 focus-visible:outline-verde-limao">
+                              <span className="group-open:hidden">
+                                Revisar ({revisao.length})
+                              </span>
+                              <span className="hidden group-open:inline">Fechar</span>
+                            </summary>
+                            <div className="mt-3 min-w-[16rem] space-y-3">
+                              {revisao.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="space-y-2 rounded-lg border border-info/30 bg-info/5 p-3"
+                                >
+                                  <p className="text-xs font-semibold text-creme">
+                                    {item.label}
+                                  </p>
+                                  {item.receiptUrl ? (
+                                    <a
+                                      href={item.receiptUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 py-1.5 text-xs text-creme transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-verde-limao"
+                                    >
+                                      Ver comprovante
+                                      <span className="text-muted">(15 min)</span>
+                                    </a>
+                                  ) : (
+                                    <p className="text-xs italic text-muted">
+                                      {item.temComprovante
+                                        ? "Comprovante existe, mas o link falhou (storage)."
+                                        : "Nenhum comprovante anexado."}
+                                    </p>
+                                  )}
+                                  <ReviewForm
+                                    paymentId={
+                                      item.kind === "payment" ? item.id : undefined
+                                    }
+                                    installmentId={
+                                      item.kind === "installment" ? item.id : undefined
+                                    }
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        )}
+
+                        {saldo.carne ? (
+                          parcelas.length > 0 ? (
+                            <BaixaManualForm nome={reg.fullName} parcelas={parcelas} />
+                          ) : (
+                            <span className="text-xs text-muted">—</span>
+                          )
                         ) : (
-                          <span className="text-xs text-muted">—</span>
-                        )
-                      ) : (
-                        <BaixaManualForm
-                          nome={reg.fullName}
-                          paymentId={reg.payment!.id}
-                        />
-                      )}
+                          <BaixaManualForm
+                            nome={reg.fullName}
+                            paymentId={reg.payment!.id}
+                          />
+                        )}
+
+                        {alvos.length > 0 && (
+                          <AlterarFormaForm
+                            paymentId={reg.payment!.id}
+                            alvos={alvos}
+                            isCarne={saldo.carne}
+                          />
+                        )}
+                      </div>
                     </Td>
                   </tr>
                 );
@@ -212,14 +317,8 @@ export default async function EmAbertoPage() {
 
       <p className="text-xs text-muted">
         &quot;Em aberto&quot; é o que ainda não entrou em caixa. Um comprovante
-        enviado só abate o saldo depois de aprovado em{" "}
-        <Link
-          href="/admin/pagamentos"
-          className="rounded underline hover:text-creme focus-visible:outline-verde-limao"
-        >
-          Pagamentos
-        </Link>
-        .
+        enviado só abate o saldo depois que você o aprova no botão
+        &quot;Revisar&quot; da linha.
       </p>
     </div>
   );
