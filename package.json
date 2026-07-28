@@ -35,7 +35,8 @@
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",
     "verify": "bash scripts/verify-docs.sh && bash scripts/verify-framework.sh && bash scripts/verify-docs-integrity.sh && node scripts/verify-command-skills.mjs",
-    "verify:all": "npm run verify && npm run verify:skills && npm run verify:harness-init && npm run test:journey"
+    "verify:all": "npm run verify && npm run verify:skills && npm run verify:harness-init && npm run test:journey",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
