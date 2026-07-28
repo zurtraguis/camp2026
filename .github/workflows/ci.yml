@@ -6,8 +6,10 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  # Sem filtro de base: PRs empilhados (que apontam para outra branch de
+  # trabalho, não para a main) ficavam SEM CI nenhum — exatamente o caso em que
+  # mais se precisa dele, porque o diff acumula.
   pull_request:
-    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -24,6 +26,24 @@ jobs:
   quality:
     name: Quality Gates
     runs-on: ubuntu-latest
+
+    # Postgres descartável para os testes de INTEGRAÇÃO: é onde a máquina de
+    # estados do dinheiro (transações, updateMany condicional, concorrência) é
+    # provada de verdade — teste de função pura não alcança isso.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout
@@ -51,6 +71,18 @@ jobs:
 
       - name: Test
         run: npm run test
+
+      - name: Migrate (banco de integração)
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+
+      - name: Integration Tests (Postgres real)
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
 
       - name: Security Audit
         run: npm audit --audit-level=critical
