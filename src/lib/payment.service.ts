@@ -12,6 +12,11 @@ import {
   bloqueioEnvioComprovante,
   bloqueioEnvioParcela,
 } from "@/lib/estado-pagamento";
+import {
+  bloqueioTrocaForma,
+  FORMA_ALVO_LABEL,
+  type FormaAlvo,
+} from "@/lib/forma-pagamento";
 
 const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
@@ -431,6 +436,61 @@ export async function baixaManualParcela(
     "confirm",
     adminId,
     notaBaixaManual(forma, obs),
+  );
+}
+
+/**
+ * Troca manual da forma de pagamento (admin): Pix à vista ↔ cartão, ou
+ * carnê → qualquer um dos dois. Só enquanto nada foi confirmado nem há
+ * comprovante na fila (regras puras em @/lib/forma-pagamento). Ao sair do
+ * carnê, as parcelas são descartadas — o guard garante que nenhuma tinha
+ * dinheiro confirmado ou comprovante pendente.
+ */
+export async function alterarFormaPagamento(
+  paymentId: string,
+  alvo: FormaAlvo,
+  adminId: string,
+): Promise<void> {
+  await db.$transaction(
+    async (tx) => {
+      const p = await tx.payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          installments: { select: { status: true } },
+          registration: { select: { publicCode: true } },
+        },
+      });
+      if (!p) throw new Error("Pagamento não encontrado.");
+
+      const bloqueio = bloqueioTrocaForma(p, alvo);
+      if (bloqueio) throw new Error(bloqueio);
+
+      if (p.installments.length > 0) {
+        await tx.installment.deleteMany({ where: { paymentId: p.id } });
+      }
+
+      const antes =
+        p.installmentsTotal && p.installments.length > 0
+          ? `carnê ${p.installmentsTotal}x`
+          : p.method === "PIX"
+            ? "Pix à vista"
+            : "cartão";
+      await tx.payment.update({
+        where: { id: p.id },
+        data: {
+          method: alvo,
+          status: "PENDING",
+          installmentsTotal: null,
+          pixTxid: alvo === "PIX" ? p.registration.publicCode : null,
+          pixReceiptPath: null,
+          // Trilha de auditoria da troca: quem mexeu e o que era antes.
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+          reviewNote: `Forma de pagamento alterada de ${antes} para ${FORMA_ALVO_LABEL[alvo]} pelo admin.`,
+        },
+      });
+    },
+    { isolationLevel: "Serializable" },
   );
 }
 

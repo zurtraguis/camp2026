@@ -147,7 +147,7 @@ export default async function AdminDashboardPage() {
           label="Aguardando revisão"
           value={pendingReview}
           accent="text-amarelo-sol"
-          href="/admin/pagamentos"
+          href="/admin/em-aberto"
         />
         {/* Tribo breakdown */}
         <Card className="col-span-2 sm:col-span-1">

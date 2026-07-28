@@ -4,9 +4,12 @@ import { randomUUID } from "node:crypto";
 import { AwsClient } from "aws4fetch";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { MAX_RECEIPT_BYTES } from "@/lib/receipt-check";
 import { receiptPath } from "@/lib/receipt-path";
 
-export { receiptPath };
+// Reexportados: ambos vivem em módulos puros (este arquivo é server-only e
+// nada aqui dentro é importável em teste ou no cliente).
+export { MAX_RECEIPT_BYTES, receiptPath };
 
 /**
  * Upload de comprovantes Pix para um bucket PRIVADO.
@@ -23,7 +26,6 @@ export { receiptPath };
  *  - caminho prefixado por registrationId para isolamento.
  */
 
-export const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 export const ALLOWED_RECEIPT_MIME = [
   "image/jpeg",
   "image/png",
