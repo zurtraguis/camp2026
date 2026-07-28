@@ -55,16 +55,29 @@ describe("Pix à vista — revisão", () => {
     ).toBe("FAILED");
   });
 
-  it("rejeição atrasada NÃO desfaz pagamento já confirmado", async () => {
+  it("confirmação dupla é recusada (dois voluntários no mesmo comprovante)", async () => {
     const { registrationId, payment } = await criar();
     await reviewPixPayment(payment.id, "confirm", adminId);
 
-    await expect(reviewPixPayment(payment.id, "reject", adminId)).rejects.toThrow(
+    await expect(reviewPixPayment(payment.id, "confirm", adminId)).rejects.toThrow(
       /já está confirmado/i,
     );
 
     const reg = await db.registration.findUniqueOrThrow({ where: { id: registrationId } });
     expect(reg.status).toBe("CONFIRMED");
+  });
+
+  it("rejeitar um pagamento confirmado é PERMITIDO — desfaz comprovante falso", async () => {
+    // Sem este caminho, uma confirmação por engano ficaria presa para sempre.
+    const { registrationId, payment } = await criar();
+    await reviewPixPayment(payment.id, "confirm", adminId);
+    await reviewPixPayment(payment.id, "reject", adminId, "comprovante falso");
+
+    const reg = await db.registration.findUniqueOrThrow({ where: { id: registrationId } });
+    expect(reg.status).toBe("PENDING_PAYMENT");
+    expect(
+      (await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).status,
+    ).toBe("FAILED");
   });
 });
 

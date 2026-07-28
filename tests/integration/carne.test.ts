@@ -102,18 +102,18 @@ describe("carnê — ciclo completo", () => {
     expect(pg.status).toBe("PENDING"); // voltou a dever a 3ª
   });
 
-  it("revisão dupla: confirmar e depois rejeitar a MESMA parcela é recusado", async () => {
+  it("confirmação dupla da mesma parcela é recusada", async () => {
     const { payment } = await criarCarne(2);
     const p1 = payment.installments[0].id;
     await reviewInstallment(p1, "confirm", adminId);
 
-    // Segundo voluntário clica "rejeitar" com a tela velha aberta.
-    await expect(reviewInstallment(p1, "reject", adminId)).rejects.toThrow(
+    // Segundo voluntário clica "confirmar" com a tela velha aberta.
+    await expect(reviewInstallment(p1, "confirm", adminId)).rejects.toThrow(
       /já está confirmada/i,
     );
 
     const inst = await db.installment.findUniqueOrThrow({ where: { id: p1 } });
-    expect(inst.status).toBe("CONFIRMED"); // dinheiro confirmado não foi desfeito
+    expect(inst.status).toBe("CONFIRMED");
   });
 
   it("carnê não pode ser quitado pela revisão do pagamento inteiro", async () => {

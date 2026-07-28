@@ -337,13 +337,19 @@ export async function reviewInstallment(
       });
       if (!inst || !inst.payment) throw new Error("Parcela não encontrada.");
 
-      // `not: CONFIRMED` (e não `= AWAITING_REVIEW`): a baixa manual chama esta
-      // função com a parcela ainda PENDING — dinheiro em espécie não tem
-      // comprovante na fila. O que precisamos impedir é DESFAZER uma parcela já
-      // confirmada: dois voluntários decidindo ao mesmo tempo, ou um clique
-      // atrasado revertendo dinheiro que já entrou.
+      // A guarda vale só para CONFIRMAR: impede confirmação dupla (dois
+      // voluntários, ou um clique atrasado, quitando duas vezes). REJEITAR uma
+      // parcela já confirmada é permitido de propósito — é o único caminho para
+      // desfazer um comprovante falso descoberto depois. Sem isso, um erro de
+      // confirmação ficaria preso para sempre (e a vaga junto).
+      //
+      // O `where` NÃO pode ser `= AWAITING_REVIEW`: a baixa manual chama esta
+      // função com a parcela ainda PENDING (dinheiro em espécie não passa pela
+      // fila de revisão).
       const upd = await tx.installment.updateMany({
-        where: { id: installmentId, status: { not: "CONFIRMED" } },
+        where: confirmed
+          ? { id: installmentId, status: { not: "CONFIRMED" } }
+          : { id: installmentId },
         data: {
           status: confirmed ? "CONFIRMED" : "FAILED",
           reviewedById: adminId,
@@ -356,6 +362,7 @@ export async function reviewInstallment(
           "Esta parcela já está confirmada. Recarregue a página.",
         );
       }
+      // (rejeição sempre casa: o where é só pelo id)
 
       // Estado das parcelas DEPOIS desta decisão.
       const parcelas = inst.payment.installments.map((i) =>
@@ -455,12 +462,15 @@ export async function reviewPixPayment(
   const confirmed = decision === "confirm";
   await db.$transaction(
     async (tx) => {
-      // `not: CONFIRMED` em vez de `= AWAITING_REVIEW`: a baixa manual chama
-      // esta função com o pagamento ainda PENDING (não há comprovante). O que
-      // precisamos impedir é DESFAZER dinheiro já confirmado — uma rejeição
-      // atrasada, ou dois voluntários decidindo ao mesmo tempo.
+      // Guarda só para CONFIRMAR (impede confirmação dupla). REJEITAR um
+      // pagamento confirmado é permitido: é o único caminho para desfazer um
+      // comprovante falso descoberto depois.
+      // O `where` NÃO pode ser `= AWAITING_REVIEW`: a baixa manual chama esta
+      // função com o pagamento ainda PENDING (não há comprovante).
       const upd = await tx.payment.updateMany({
-        where: { id: paymentId, status: { not: "CONFIRMED" } },
+        where: confirmed
+          ? { id: paymentId, status: { not: "CONFIRMED" } }
+          : { id: paymentId },
         data: {
           status: confirmed ? "CONFIRMED" : "FAILED",
           reviewedById: adminId,
