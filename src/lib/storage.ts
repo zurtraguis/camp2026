@@ -1,11 +1,15 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { AwsClient } from "aws4fetch";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { MAX_RECEIPT_BYTES } from "@/lib/receipt-check";
+import { receiptPath } from "@/lib/receipt-path";
 
-export { MAX_RECEIPT_BYTES };
+// Reexportados: ambos vivem em módulos puros (este arquivo é server-only e
+// nada aqui dentro é importável em teste ou no cliente).
+export { MAX_RECEIPT_BYTES, receiptPath };
 
 /**
  * Upload de comprovantes Pix para um bucket PRIVADO.
@@ -145,12 +149,18 @@ export async function validateReceipt(file: File): Promise<ValidatedReceipt> {
   return { buffer, contentType: real, ext };
 }
 
-/** Faz o upload e retorna o caminho salvo. */
+/** Faz o upload e retorna o caminho salvo. `scope`: "avista" ou o id da parcela. */
 export async function uploadReceipt(
   registrationId: string,
   receipt: ValidatedReceipt,
+  scope: string,
 ): Promise<string> {
-  const path = `${registrationId}/comprovante.${receipt.ext}`;
+  const path = receiptPath(
+    registrationId,
+    scope,
+    receipt.ext,
+    `${Date.now()}-${randomUUID().slice(0, 8)}`,
+  );
 
   if (s3Configured()) {
     const res = await s3Client().fetch(s3ObjectUrl(path), {
@@ -171,9 +181,10 @@ export async function uploadReceipt(
 
   const { error } = await adminClient()
     .storage.from(env.SUPABASE_COMPROVANTES_BUCKET)
+    // upsert:false — o path é único por envio; sobrescrever seria perder prova.
     .upload(path, receipt.buffer, {
       contentType: receipt.contentType,
-      upsert: true,
+      upsert: false,
     });
   if (error) throw new Error(`Falha no upload do comprovante: ${error.message}`);
   return path;

@@ -13,7 +13,10 @@ export type { ActiveLote } from "@/lib/lotes";
 export async function getActiveLote(): Promise<ActiveLote | null> {
   const [lotes, sold] = await Promise.all([
     db.lote.findMany({ where: { active: true }, orderBy: { order: "asc" } }),
-    db.registration.count({ where: { status: { not: "CANCELLED" } } }),
+    // isDemo fora da conta: inscrição de teste não pode consumir vaga real.
+    db.registration.count({
+      where: { status: { not: "CANCELLED" }, isDemo: false },
+    }),
   ]);
   return resolveActiveLote(lotes, sold, new Date());
 }
@@ -21,7 +24,10 @@ export async function getActiveLote(): Promise<ActiveLote | null> {
 export async function listLotes() {
   const [lotes, sold] = await Promise.all([
     db.lote.findMany({ orderBy: { order: "asc" } }),
-    db.registration.count({ where: { status: { not: "CANCELLED" } } }),
+    // isDemo fora da conta: inscrição de teste não pode consumir vaga real.
+    db.registration.count({
+      where: { status: { not: "CANCELLED" }, isDemo: false },
+    }),
   ]);
   let cumulative = 0;
   return lotes.map((l) => {

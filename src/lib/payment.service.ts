@@ -253,7 +253,7 @@ export async function submitPixReceipt(
   if (reg.payment.method !== "PIX") throw new Error("Esta inscrição não é via Pix.");
 
   const validated = await validateReceipt(file);
-  const path = await uploadReceipt(reg.id, validated);
+  const path = await uploadReceipt(reg.id, validated, "avista");
 
   await db.$transaction([
     db.payment.update({
@@ -292,7 +292,8 @@ export async function submitInstallmentReceipt(
   if (inst.status === "CONFIRMED") throw new Error("Esta parcela já foi confirmada.");
 
   const validated = await validateReceipt(file);
-  const path = await uploadReceipt(reg.id, validated);
+  // Escopo = id da parcela: cada parcela tem sua própria prova.
+  const path = await uploadReceipt(reg.id, validated, inst.id);
 
   await db.installment.update({
     where: { id: inst.id },
