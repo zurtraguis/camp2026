@@ -7,6 +7,11 @@ import { env } from "@/lib/env";
 import { buildPixPayload } from "@/lib/pix";
 import { validateReceipt, uploadReceipt, storageConfigured } from "@/lib/storage";
 import { notaBaixaManual, type FormaRecebimento } from "@/lib/baixa";
+import {
+  statusDaInscricaoPorParcelas,
+  bloqueioEnvioComprovante,
+  bloqueioEnvioParcela,
+} from "@/lib/estado-pagamento";
 
 const appUrl = env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
 
@@ -242,10 +247,20 @@ export async function submitPixReceipt(
   }
   const reg = await db.registration.findUnique({
     where: { publicCode },
-    include: { payment: true },
+    include: { payment: { include: { installments: { select: { id: true } } } } },
   });
   if (!reg || !reg.payment) throw new Error("Inscrição não encontrada.");
-  if (reg.payment.method !== "PIX") throw new Error("Esta inscrição não é via Pix.");
+
+  // Guardas de estado: sem elas, qualquer um com o código reenviava comprovante
+  // e rebaixava uma inscrição CONFIRMED para AWAITING_REVIEW.
+  const bloqueio = bloqueioEnvioComprovante({
+    method: reg.payment.method,
+    status: reg.payment.status,
+    installmentsTotal: reg.payment.installmentsTotal,
+    temParcelas: reg.payment.installments.length > 0,
+    registrationStatus: reg.status,
+  });
+  if (bloqueio) throw new Error(bloqueio);
 
   const validated = await validateReceipt(file);
   const path = await uploadReceipt(reg.id, validated, "avista");
@@ -284,7 +299,11 @@ export async function submitInstallmentReceipt(
   }
   const inst = reg.payment.installments.find((i) => i.number === installmentNumber);
   if (!inst) throw new Error("Parcela não encontrada.");
-  if (inst.status === "CONFIRMED") throw new Error("Esta parcela já foi confirmada.");
+  const bloqueioParcela = bloqueioEnvioParcela({
+    installmentStatus: inst.status,
+    registrationStatus: reg.status,
+  });
+  if (bloqueioParcela) throw new Error(bloqueioParcela);
 
   const validated = await validateReceipt(file);
   // Escopo = id da parcela: cada parcela tem sua própria prova.
@@ -318,8 +337,13 @@ export async function reviewInstallment(
       });
       if (!inst || !inst.payment) throw new Error("Parcela não encontrada.");
 
-      await tx.installment.update({
-        where: { id: installmentId },
+      // `not: CONFIRMED` (e não `= AWAITING_REVIEW`): a baixa manual chama esta
+      // função com a parcela ainda PENDING — dinheiro em espécie não tem
+      // comprovante na fila. O que precisamos impedir é DESFAZER uma parcela já
+      // confirmada: dois voluntários decidindo ao mesmo tempo, ou um clique
+      // atrasado revertendo dinheiro que já entrou.
+      const upd = await tx.installment.updateMany({
+        where: { id: installmentId, status: { not: "CONFIRMED" } },
         data: {
           status: confirmed ? "CONFIRMED" : "FAILED",
           reviewedById: adminId,
@@ -327,28 +351,35 @@ export async function reviewInstallment(
           reviewNote: note ?? null,
         },
       });
+      if (upd.count !== 1) {
+        throw new Error(
+          "Esta parcela já está confirmada. Recarregue a página.",
+        );
+      }
 
-      if (!confirmed) return;
+      // Estado das parcelas DEPOIS desta decisão.
+      const parcelas = inst.payment.installments.map((i) =>
+        i.id === installmentId
+          ? { ...i, status: confirmed ? "CONFIRMED" : "FAILED" }
+          : i,
+      );
 
-      // Vaga garantida a partir da 1ª parcela paga.
+      // Status da inscrição é DERIVADO das parcelas — nunca reescrito cego.
+      // Antes, rejeitar uma parcela retornava cedo e a inscrição ficava
+      // CONFIRMED para sempre: vaga ocupada sem dinheiro.
       await tx.registration.update({
         where: { id: inst.payment.registrationId },
-        data: { status: "CONFIRMED" },
+        data: { status: statusDaInscricaoPorParcelas(parcelas) },
       });
 
-      // Pagamento inteiro só quita quando todas as parcelas estão confirmadas.
-      const confirmedCount =
-        inst.payment.installments.filter(
-          (i) => i.id !== installmentId && i.status === "CONFIRMED",
-        ).length + 1;
-      const total =
-        inst.payment.installmentsTotal ?? inst.payment.installments.length;
-      if (confirmedCount >= total) {
-        await tx.payment.update({
-          where: { id: inst.payment.id },
-          data: { status: "CONFIRMED" },
-        });
-      }
+      // Pagamento inteiro só quita quando TODAS as parcelas estão confirmadas;
+      // se uma foi rejeitada, ele volta a ficar pendente.
+      const confirmadas = parcelas.filter((i) => i.status === "CONFIRMED").length;
+      const total = inst.payment.installmentsTotal ?? parcelas.length;
+      await tx.payment.update({
+        where: { id: inst.payment.id },
+        data: { status: confirmadas >= total ? "CONFIRMED" : "PENDING" },
+      });
     },
     { isolationLevel: "Serializable" },
   );
@@ -410,23 +441,43 @@ export async function reviewPixPayment(
   adminId: string,
   note?: string,
 ): Promise<void> {
-  const payment = await db.payment.findUnique({ where: { id: paymentId } });
+  const payment = await db.payment.findUnique({
+    where: { id: paymentId },
+    include: { installments: { select: { id: true } } },
+  });
   if (!payment) throw new Error("Pagamento não encontrado.");
+  // Carnê quita parcela a parcela; revisar o pagamento inteiro aqui daria a
+  // vaga (e o valor cheio) com um clique só.
+  if (payment.installments.length > 0) {
+    throw new Error("Este é um carnê — revise parcela a parcela.");
+  }
 
   const confirmed = decision === "confirm";
-  await db.$transaction([
-    db.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: confirmed ? "CONFIRMED" : "FAILED",
-        reviewedById: adminId,
-        reviewedAt: new Date(),
-        reviewNote: note ?? null,
-      },
-    }),
-    db.registration.update({
-      where: { id: payment.registrationId },
-      data: { status: confirmed ? "CONFIRMED" : "PENDING_PAYMENT" },
-    }),
-  ]);
+  await db.$transaction(
+    async (tx) => {
+      // `not: CONFIRMED` em vez de `= AWAITING_REVIEW`: a baixa manual chama
+      // esta função com o pagamento ainda PENDING (não há comprovante). O que
+      // precisamos impedir é DESFAZER dinheiro já confirmado — uma rejeição
+      // atrasada, ou dois voluntários decidindo ao mesmo tempo.
+      const upd = await tx.payment.updateMany({
+        where: { id: paymentId, status: { not: "CONFIRMED" } },
+        data: {
+          status: confirmed ? "CONFIRMED" : "FAILED",
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+          reviewNote: note ?? null,
+        },
+      });
+      if (upd.count !== 1) {
+        throw new Error(
+          "Este pagamento já está confirmado. Recarregue a página.",
+        );
+      }
+      await tx.registration.update({
+        where: { id: payment.registrationId },
+        data: { status: confirmed ? "CONFIRMED" : "PENDING_PAYMENT" },
+      });
+    },
+    { isolationLevel: "Serializable" },
+  );
 }
