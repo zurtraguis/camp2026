@@ -13,6 +13,37 @@ import { chooseTribo, emptyCounts, applyAssignment, type Gender } from "../src/l
 import { ageOn, makePublicCode } from "../src/lib/format";
 import { hashPassword } from "../src/lib/password";
 
+/**
+ * GUARDA DE AMBIENTE — este seed cria um ADMIN demo. Rodá-lo contra o banco de
+ * produção abre uma conta com senha conhecida no painel (já aconteceu: a conta
+ * admin@raiz.local existiu em produção e foi removida à mão em 27/07/2026).
+ * O .env local aponta para a produção, então o bloqueio olha a URL, não só o
+ * NODE_ENV. Para forçar (ex.: staging descartável): ALLOW_DEMO_SEED=1.
+ */
+const dbUrl = process.env.DATABASE_URL ?? "";
+const pareceLocal = /localhost|127\.0\.0\.1|host\.docker\.internal/.test(dbUrl);
+if (
+  process.env.ALLOW_DEMO_SEED !== "1" &&
+  (process.env.NODE_ENV === "production" || !pareceLocal)
+) {
+  console.error(
+    "[seed] BLOQUEADO: DATABASE_URL não aponta para um banco local.\n" +
+      "        Este seed cria um ADMIN demo — nunca rode em produção.\n" +
+      "        Se for mesmo intencional, rode com ALLOW_DEMO_SEED=1.",
+  );
+  process.exit(1);
+}
+
+/** Senha do admin demo: só de env, nunca fixa no código. */
+if (!process.env.DEMO_ADMIN_PASSWORD) {
+  console.error(
+    "[seed] BLOQUEADO: defina DEMO_ADMIN_PASSWORD para criar o admin demo.\n" +
+      "        Ex.: DEMO_ADMIN_PASSWORD='<senha-forte>' npm run db:seed",
+  );
+  process.exit(1);
+}
+const DEMO_ADMIN_PASSWORD: string = process.env.DEMO_ADMIN_PASSWORD;
+
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
@@ -45,7 +76,10 @@ async function main() {
     if (l.order === 1) firstLoteId = lote.id;
   }
 
-  console.log("[seed] Admin demo (admin@raiz.local / raiz123456)...");
+  // Admin demo. O ramo `update` NÃO regrava a senha: antes, rodar o seed de
+  // novo resetava a senha de quem já existia — inclusive de um admin real com
+  // o mesmo e-mail.
+  console.log("[seed] Admin demo (admin@raiz.local / $DEMO_ADMIN_PASSWORD)...");
   await prisma.user.upsert({
     where: { email: "admin@raiz.local" },
     create: {
@@ -54,13 +88,9 @@ async function main() {
       role: "ADMIN",
       isDemo: true,
       emailVerified: new Date(),
-      passwordHash: await hashPassword("raiz123456"),
+      passwordHash: await hashPassword(DEMO_ADMIN_PASSWORD),
     },
-    update: {
-      role: "ADMIN",
-      isDemo: true,
-      passwordHash: await hashPassword("raiz123456"),
-    },
+    update: {},
   });
 
   console.log("[seed] Inscrições demo...");
@@ -120,7 +150,7 @@ async function main() {
     });
   }
 
-  console.log("[seed] OK. Admin: admin@raiz.local / raiz123456");
+  console.log("[seed] OK. Admin demo: admin@raiz.local (senha = $DEMO_ADMIN_PASSWORD)");
 }
 
 main()

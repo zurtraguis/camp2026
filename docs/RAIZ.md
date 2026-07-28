@@ -63,7 +63,15 @@ npm run dev                     # http://localhost:3000
 Sem banco configurado, a landing e `/inscricao` ainda renderizam (modo dev exibe
 um lote de exemplo). O envio do formulário exige o Supabase conectado.
 
-**Admin demo:** `admin@raiz.local` / `raiz123456` (criado pelo seed).
+**Admin demo:** `admin@raiz.local`, criado pelo seed **apenas em banco local** com a
+senha que você passar em `DEMO_ADMIN_PASSWORD`:
+
+```bash
+DEMO_ADMIN_PASSWORD='<senha-forte>' npm run db:seed
+```
+
+O seed aborta se `DATABASE_URL` não for local (use `ALLOW_DEMO_SEED=1` para forçar
+em staging descartável). Nunca rode contra produção: cria um ADMIN.
 
 ### 3.1 Variáveis de ambiente (`.env.example`)
 
