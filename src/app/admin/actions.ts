@@ -23,6 +23,7 @@ import {
   reviewInstallment,
   baixaManualPagamento,
   baixaManualParcela,
+  alterarFormaPagamento,
 } from "@/lib/payment.service";
 import { rebalance, type Camper, type Gender } from "@/lib/tribos";
 
@@ -87,7 +88,7 @@ export async function reviewPixAction(
       parsed.data.note,
     );
     revalidatePath("/admin");
-    revalidatePath("/admin/pagamentos");
+    revalidatePath("/admin/em-aberto");
     return {
       ok: true,
       message:
@@ -123,7 +124,7 @@ export async function reviewInstallmentAction(
       parsed.data.note,
     );
     revalidatePath("/admin");
-    revalidatePath("/admin/pagamentos");
+    revalidatePath("/admin/em-aberto");
     return {
       ok: true,
       message:
@@ -175,12 +176,41 @@ export async function baixaManualAction(
     }
     revalidatePath("/admin");
     revalidatePath("/admin/em-aberto");
-    revalidatePath("/admin/pagamentos");
     return { ok: true, message: "Baixa registrada." };
   } catch (err) {
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao dar baixa.",
+    };
+  }
+}
+
+/**
+ * Troca a forma de pagamento (Pix à vista / cartão). As guardas de estado
+ * (nada confirmado, nada em revisão) ficam no serviço/regra pura.
+ */
+export async function alterarFormaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const paymentId = String(formData.get("paymentId") ?? "");
+  const alvo = String(formData.get("alvo") ?? "");
+  if (!paymentId || (alvo !== "PIX" && alvo !== "CARD")) {
+    return { ok: false, message: "Dados inválidos." };
+  }
+  try {
+    await alterarFormaPagamento(paymentId, alvo, admin.id);
+    revalidatePath("/admin");
+    revalidatePath("/admin/em-aberto");
+    return {
+      ok: true,
+      message: alvo === "PIX" ? "Forma alterada para Pix à vista." : "Forma alterada para cartão.",
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao alterar a forma.",
     };
   }
 }
