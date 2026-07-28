@@ -17,7 +17,13 @@ const root = path.dirname(fileURLToPath(import.meta.url));
  */
 export default defineConfig({
   resolve: {
-    alias: { "@": path.resolve(root, "src") },
+    alias: {
+      "@": path.resolve(root, "src"),
+      // `server-only` é guarda de BUILD e lança fora do bundler do Next. Aqui
+      // importar o serviço direto é justamente o objetivo — a guarda continua
+      // valendo no build de produção, que usa o pacote real.
+      "server-only": path.resolve(root, "tests/integration/server-only-stub.ts"),
+    },
   },
   test: {
     include: ["tests/integration/**/*.test.ts"],
