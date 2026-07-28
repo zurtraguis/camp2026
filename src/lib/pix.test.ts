@@ -70,8 +70,9 @@ describe("format", () => {
     expect(ageOn(new Date("2010-07-16"), ref)).toBe(15); // ainda não fez aniversário
   });
 
-  it("gera código público no formato RAIZ-XXXXXX sem caracteres ambíguos", () => {
-    const code = makePublicCode("abcdef0123456789abcdef0123456789");
-    expect(code).toMatch(/^RAIZ-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);
+  it("gera código público sem caracteres ambíguos", () => {
+    // Cobertura detalhada (entropia, unicidade, alfabeto) vive em format.test.ts.
+    const code = makePublicCode();
+    expect(code).toMatch(/^RAIZ-[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$/);
   });
 });

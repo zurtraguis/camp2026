@@ -48,12 +48,11 @@ export async function createRegistration(
       // pré-check para a mensagem amigável no campo; este é o backstop.
       const dup = await tx.registration.findFirst({
         where: { cpf: input.cpf, status: { not: "CANCELLED" } },
-        select: { publicCode: true },
+        select: { id: true },
       });
       if (dup) {
-        throw new Error(
-          `Já existe uma inscrição para este CPF (${dup.publicCode}).`,
-        );
+        // Sem código/nome na mensagem: ela chega ao formulário público.
+        throw new Error("Já existe uma inscrição ativa para este CPF.");
       }
 
       // Reconstrói as contagens atuais por tribo/estrato dentro da transação.
@@ -191,13 +190,14 @@ export async function createRegistration(
 }
 
 /**
- * Inscrição não-cancelada com este CPF de CAMPISTA (dígitos), se houver. Usada
- * no pré-check do formulário para mostrar o erro no campo antes de submeter.
+ * Existe inscrição não-cancelada com este CPF de CAMPISTA? Devolve só o `id` —
+ * nunca nome ou código: quem chama é o pré-check público do formulário, e
+ * devolver PII ali transformaria "digite um CPF" em consulta de nome de menor.
  */
 export async function findActiveRegistrationByCpf(cpfDigits: string) {
   return db.registration.findFirst({
     where: { cpf: cpfDigits, status: { not: "CANCELLED" } },
-    select: { publicCode: true, fullName: true },
+    select: { id: true },
   });
 }
 

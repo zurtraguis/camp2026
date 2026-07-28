@@ -30,13 +30,17 @@ export async function previewCoupon(
   const code = normalizeCouponCode(rawCode);
   if (!code) return { ok: false };
 
-  const coupon = await db.coupon.findUnique({ where: { code } });
-  if (!coupon) return { ok: false, message: "Cupom não encontrado." };
+  // Mensagem ÚNICA para todos os casos de falha: distinguir "não existe" de
+  // "expirou" transforma o preview num oráculo — o atacante sabe quando acertou
+  // um código válido, e os códigos são palavras previsíveis (IGREJA10, LIDER).
+  const invalido: CouponPreview = {
+    ok: false,
+    message: "Cupom inválido ou indisponível.",
+  };
 
-  const usable = couponUsable(coupon, new Date());
-  if (!usable.ok) {
-    return { ok: false, message: COUPON_REASON_LABEL[usable.reason!] };
-  }
+  const coupon = await db.coupon.findUnique({ where: { code } });
+  if (!coupon) return invalido;
+  if (!couponUsable(coupon, new Date()).ok) return invalido;
 
   const finalCents = applyPercentOff(priceCents, coupon.percentOff);
   return {
