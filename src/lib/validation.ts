@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ageOn, MIN_AGE, MAX_AGE } from "./format";
+import { maxInstallmentsForDate, MIN_INSTALLMENTS } from "./carne";
 
 /** Flags de triagem confidencial (manual, seção 10). */
 export const TRIAGE_FLAGS = [
@@ -106,6 +107,22 @@ export const registrationSchema = z
         path: ["installments"],
         message: "O parcelamento (carnê) está disponível apenas no Pix.",
       });
+    }
+    // O teto de parcelas encolhe conforme o acampamento se aproxima (toda
+    // parcela precisa vencer antes do evento). Rejeitamos em vez de rebaixar
+    // para à vista em silêncio: a pessoa escolheu parcelar e precisa saber.
+    if (data.installments > 1) {
+      const teto = maxInstallmentsForDate(new Date());
+      if (data.installments > teto) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["installments"],
+          message:
+            teto < MIN_INSTALLMENTS
+              ? "O parcelamento não está mais disponível — falta pouco para o acampamento. Escolha o pagamento à vista."
+              : `Neste período o carnê é em até ${teto}x (toda parcela precisa vencer antes do acampamento).`,
+        });
+      }
     }
   });
 

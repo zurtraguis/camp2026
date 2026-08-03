@@ -47,6 +47,7 @@
     "@supabase/supabase-js": "^2.108.2",
     "aws4fetch": "^1.0.20",
     "dotenv": "^17.4.1",
+    "exceljs": "^4.4.0",
     "next": "^16.2.9",
     "qrcode": "^1.5.4",
     "react": "19.2.4",

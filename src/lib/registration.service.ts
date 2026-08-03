@@ -91,7 +91,10 @@ export async function createRegistration(
 
       // Carnê Pix parcelado (2x/3x): monta as parcelas (valor + vencimento).
       // À vista (Pix ou cartão) segue o fluxo de pagamento único.
-      const carne = input.paymentMethod === "PIX" && isCarne(input.installments);
+      // isCarne com a data: o teto de parcelas encolhe conforme o acampamento
+      // se aproxima. O schema já rejeita antes; isto é o backstop.
+      const carne =
+        input.paymentMethod === "PIX" && isCarne(input.installments, new Date());
       const installmentData = carne
         ? (() => {
             const amounts = splitInstallments(finalPriceCents, input.installments);
