@@ -6,7 +6,15 @@
  * no código antigo e passa no novo.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { db, resetDb, seedLotes, seedAdmin, inscricaoValida } from "./helpers";
+import {
+  db,
+  resetDb,
+  seedLotes,
+  seedAdmin,
+  inscricaoValida,
+  precoVigente,
+  parcelasPossiveisHoje,
+} from "./helpers";
 import { createRegistration } from "@/lib/registration.service";
 import { reviewInstallment, reviewPixPayment } from "@/lib/payment.service";
 
@@ -20,7 +28,11 @@ beforeEach(resetDb);
 afterAll(() => db.$disconnect());
 
 /** Cria uma inscrição de carnê e devolve as parcelas ordenadas. */
-async function criarCarne(parcelas = 3) {
+// Quantas parcelas cabem HOJE: o teto encolhe conforme o acampamento se
+// aproxima, então chumbar 3 quebraria a suíte com o passar do tempo.
+const N = parcelasPossiveisHoje();
+
+async function criarCarne(parcelas = N) {
   const criada = await createRegistration(
     inscricaoValida({ paymentMethod: "PIX", installments: parcelas }),
   );
@@ -32,17 +44,18 @@ async function criarCarne(parcelas = 3) {
 }
 
 describe("carnê — ciclo completo", () => {
-  it("cria 3 parcelas somando o valor do lote", async () => {
-    const { payment } = await criarCarne(3);
-    expect(payment.installments).toHaveLength(3);
-    expect(payment.installmentsTotal).toBe(3);
+  it("cria as parcelas somando o valor do lote", async () => {
+    const { payment } = await criarCarne(N);
+    expect(payment.installments).toHaveLength(N);
+    expect(payment.installmentsTotal).toBe(N);
+    expect(payment.amountCents).toBe(await precoVigente());
     const soma = payment.installments.reduce((s, i) => s + i.amountCents, 0);
     expect(soma).toBe(payment.amountCents);
     expect(payment.status).toBe("PENDING");
   });
 
   it("confirmar a 1ª parcela garante a vaga, mas não quita o pagamento", async () => {
-    const { registrationId, payment } = await criarCarne(3);
+    const { registrationId, payment } = await criarCarne(N);
     await reviewInstallment(payment.installments[0].id, "confirm", adminId);
 
     const reg = await db.registration.findUniqueOrThrow({
@@ -54,7 +67,7 @@ describe("carnê — ciclo completo", () => {
   });
 
   it("REJEITAR a única parcela paga SOLTA a vaga (bug da vaga presa)", async () => {
-    const { registrationId, payment } = await criarCarne(3);
+    const { registrationId, payment } = await criarCarne(N);
     const p1 = payment.installments[0].id;
 
     await reviewInstallment(p1, "confirm", adminId);
@@ -77,7 +90,7 @@ describe("carnê — ciclo completo", () => {
   });
 
   it("rejeitar uma parcela NÃO solta a vaga se outra segue confirmada", async () => {
-    const { registrationId, payment } = await criarCarne(3);
+    const { registrationId, payment } = await criarCarne(N);
     await reviewInstallment(payment.installments[0].id, "confirm", adminId);
     await reviewInstallment(payment.installments[1].id, "confirm", adminId);
     await reviewInstallment(payment.installments[1].id, "reject", adminId);
@@ -89,7 +102,7 @@ describe("carnê — ciclo completo", () => {
   });
 
   it("confirmar todas quita o pagamento; rejeitar uma depois o reabre", async () => {
-    const { payment } = await criarCarne(3);
+    const { payment } = await criarCarne(N);
     for (const i of payment.installments) {
       await reviewInstallment(i.id, "confirm", adminId);
     }
@@ -97,13 +110,13 @@ describe("carnê — ciclo completo", () => {
       (await db.payment.findUniqueOrThrow({ where: { id: payment.id } })).status,
     ).toBe("CONFIRMED");
 
-    await reviewInstallment(payment.installments[2].id, "reject", adminId);
+    await reviewInstallment(payment.installments[N - 1].id, "reject", adminId);
     const pg = await db.payment.findUniqueOrThrow({ where: { id: payment.id } });
     expect(pg.status).toBe("PENDING"); // voltou a dever a 3ª
   });
 
   it("confirmação dupla da mesma parcela é recusada", async () => {
-    const { payment } = await criarCarne(2);
+    const { payment } = await criarCarne(N);
     const p1 = payment.installments[0].id;
     await reviewInstallment(p1, "confirm", adminId);
 
@@ -117,7 +130,7 @@ describe("carnê — ciclo completo", () => {
   });
 
   it("carnê não pode ser quitado pela revisão do pagamento inteiro", async () => {
-    const { payment } = await criarCarne(3);
+    const { payment } = await criarCarne(N);
     await expect(reviewPixPayment(payment.id, "confirm", adminId)).rejects.toThrow(
       /carnê/i,
     );

@@ -3,7 +3,14 @@
  * tinham teste tocando o banco.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { db, resetDb, seedLotes, seedAdmin, inscricaoValida } from "./helpers";
+import {
+  db,
+  resetDb,
+  seedLotes,
+  seedAdmin,
+  inscricaoValida,
+  parcelasPossiveisHoje,
+} from "./helpers";
 import { createRegistration } from "@/lib/registration.service";
 import {
   reviewPixPayment,
@@ -98,14 +105,14 @@ describe("baixa manual", () => {
   });
 
   it("carnê: baixa do pagamento inteiro é bloqueada", async () => {
-    const { payment } = await criar({ installments: 3 });
+    const { payment } = await criar({ installments: parcelasPossiveisHoje() });
     await expect(
       baixaManualPagamento(payment.id, adminId, "DINHEIRO"),
     ).rejects.toThrow(/parcela a parcela/i);
   });
 
   it("carnê: baixa por parcela funciona mesmo sem comprovante (dinheiro)", async () => {
-    const { registrationId, payment } = await criar({ installments: 3 });
+    const { registrationId, payment } = await criar({ installments: parcelasPossiveisHoje() });
     const p1 = payment.installments[0];
     expect(p1.status).toBe("PENDING"); // nunca passou pela fila de revisão
 

@@ -8,6 +8,7 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { RegistrationInput } from "@/lib/validation";
+import { maxInstallmentsForDate } from "@/lib/carne";
 
 const url = process.env.DATABASE_URL ?? "";
 
@@ -111,4 +112,21 @@ export function inscricaoValida(
     installments: 1,
     ...over,
   };
+}
+
+/**
+ * Preço do lote vigente AGORA. Os testes não podem chumbar R$300: o preço muda
+ * por data (1º lote até 31/07, depois 400/450) e o teto de parcelas encolhe
+ * até o acampamento. Derivar mantém a suíte verde ao longo do tempo.
+ */
+export async function precoVigente(): Promise<number> {
+  const { getActiveLote } = await import("@/lib/lote.service");
+  const lote = await getActiveLote();
+  if (!lote) throw new Error("Nenhum lote ativo — rode seedLotes() antes.");
+  return lote.priceCents;
+}
+
+/** Parcelas de carnê possíveis hoje (0 se o parcelamento já fechou). */
+export function parcelasPossiveisHoje(): number {
+  return maxInstallmentsForDate(new Date());
 }

@@ -3,12 +3,21 @@
  * "duas famílias enviam ao mesmo tempo" decide se o desconto estoura o limite.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { db, resetDb, seedLotes, seedAdmin, inscricaoValida } from "./helpers";
+import {
+  db,
+  resetDb,
+  seedLotes,
+  seedAdmin,
+  inscricaoValida,
+  precoVigente,
+  parcelasPossiveisHoje,
+} from "./helpers";
 import {
   createRegistration,
   deleteRegistration,
 } from "@/lib/registration.service";
 import { aplicarCupomRetroativo } from "@/lib/coupon.service";
+import { applyPercentOff } from "@/lib/coupon";
 import { baixaManualPagamento } from "@/lib/payment.service";
 
 beforeAll(seedLotes);
@@ -38,8 +47,9 @@ describe("cupom aplicado na inscrição", () => {
     const pg = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
     });
-    expect(pg.amountCents).toBe(27000); // 300 - 10%
-    expect(pg.originalAmountCents).toBe(30000);
+    const preco = await precoVigente();
+    expect(pg.amountCents).toBe(applyPercentOff(preco, 10));
+    expect(pg.originalAmountCents).toBe(preco);
     expect(pg.discountPercent).toBe(10);
     expect(pg.couponCode).toBe("RAIZ10");
 
@@ -50,14 +60,14 @@ describe("cupom aplicado na inscrição", () => {
   it("desconto vale também nas parcelas do carnê", async () => {
     await criarCupom({ percentOff: 10 });
     const criada = await createRegistration(
-      inscricaoValida({ couponCode: "RAIZ10", installments: 3 }),
+      inscricaoValida({ couponCode: "RAIZ10", installments: parcelasPossiveisHoje() }),
     );
     const pg = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
       include: { installments: true },
     });
     const soma = pg.installments.reduce((s, i) => s + i.amountCents, 0);
-    expect(soma).toBe(27000);
+    expect(soma).toBe(applyPercentOff(await precoVigente(), 10));
   });
 
   it("cupom inativo/expirado derruba a inscrição com mensagem clara", async () => {
@@ -136,7 +146,9 @@ describe("criação de inscrição", () => {
   });
 
   it("exclusão leva junto responsável, saúde, consentimento e pagamento", async () => {
-    const criada = await createRegistration(inscricaoValida({ installments: 3 }));
+    const criada = await createRegistration(
+      inscricaoValida({ installments: parcelasPossiveisHoje() }),
+    );
     await deleteRegistration(criada.id);
 
     expect(await db.registration.count()).toBe(0);
@@ -162,15 +174,17 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     const antes = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
     });
-    expect(antes.amountCents).toBe(30000);
+    const preco = await precoVigente();
+    expect(antes.amountCents).toBe(preco);
 
     const admin = await seedAdmin();
     const r = await aplicarCupomRetroativo(antes.id, "raiz10", admin);
 
-    expect(r).toEqual({ antesCents: 30000, depoisCents: 27000, percentOff: 10 });
+    const esperado = applyPercentOff(preco, 10);
+    expect(r).toEqual({ antesCents: preco, depoisCents: esperado, percentOff: 10 });
     const pg = await db.payment.findUniqueOrThrow({ where: { id: antes.id } });
-    expect(pg.amountCents).toBe(27000);
-    expect(pg.originalAmountCents).toBe(30000);
+    expect(pg.amountCents).toBe(esperado);
+    expect(pg.originalAmountCents).toBe(preco);
     expect(pg.couponCode).toBe("RAIZ10");
     expect(pg.reviewedById).toBe(admin);
     expect(pg.reviewNote).toMatch(/aplicado pelo admin/i);
@@ -181,7 +195,7 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
 
   it("carnê: redivide as parcelas e a soma fecha com o novo total", async () => {
     await criarCupom({ percentOff: 10 });
-    const criada = await createRegistration(inscricaoValida({ installments: 2 }));
+    const criada = await createRegistration(inscricaoValida({ installments: parcelasPossiveisHoje() }));
     const pg0 = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
       include: { installments: true },
@@ -194,9 +208,9 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
       where: { id: pg0.id },
       include: { installments: true },
     });
-    expect(pg.amountCents).toBe(27000);
+    expect(pg.amountCents).toBe(applyPercentOff(await precoVigente(), 10));
     const soma = pg.installments.reduce((s, i) => s + i.amountCents, 0);
-    expect(soma).toBe(27000);
+    expect(soma).toBe(applyPercentOff(await precoVigente(), 10));
   });
 
   it("recusa se já houver dinheiro confirmado", async () => {
@@ -214,7 +228,7 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     // O valor não foi mexido.
     expect(
       (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
-    ).toBe(30000);
+    ).toBe(await precoVigente());
   });
 
   it("recusa aplicar um segundo cupom (não compõe descontos)", async () => {
@@ -233,7 +247,7 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     );
     expect(
       (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
-    ).toBe(27000);
+    ).toBe(applyPercentOff(await precoVigente(), 10));
   });
 
   it("cupom esgotado é recusado e nada muda", async () => {
@@ -247,6 +261,6 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     await expect(aplicarCupomRetroativo(pg.id, "RAIZ10", admin)).rejects.toThrow();
     expect(
       (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
-    ).toBe(30000);
+    ).toBe(await precoVigente());
   });
 });
