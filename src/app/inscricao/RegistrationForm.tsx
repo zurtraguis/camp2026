@@ -35,6 +35,8 @@ interface Props {
   /** Quando true, a opção de cartão abre o checkout online (Stripe). Enquanto
    *  false (padrão atual), o cartão vira registro para pagamento presencial. */
   cardOnlineEnabled?: boolean;
+  /** Teto de parcelas do carnê nesta data (1 = só à vista). Vem do servidor. */
+  maxInstallments?: number;
 }
 
 /* ─── Steps ─── */
@@ -224,6 +226,7 @@ export function RegistrationForm({
   priceCents,
   loteName,
   cardOnlineEnabled = false,
+  maxInstallments = 1,
 }: Props) {
   const [state, formAction] = useActionState<RegistrationFormState, FormData>(
     createRegistrationAction,
@@ -1028,13 +1031,15 @@ export function RegistrationForm({
                 <legend className="text-xs font-condensed uppercase tracking-widest text-muted">
                   Parcelar no carnê?
                 </legend>
-                {(
-                  [
-                    { n: 1, label: "À vista", desc: "Pagamento único" },
-                    { n: 2, label: "2x no carnê", desc: "2 parcelas mensais" },
-                    { n: 3, label: "3x no carnê", desc: "3 parcelas mensais" },
-                  ] as const
-                ).map(({ n, label, desc }) => {
+                {[
+                  { n: 1, label: "À vista", desc: "Pagamento único" },
+                  { n: 2, label: "2x no carnê", desc: "2 parcelas mensais" },
+                  { n: 3, label: "3x no carnê", desc: "3 parcelas mensais" },
+                ]
+                  // Só as opções que cabem antes do acampamento (o servidor
+                  // calcula o teto e rejeita o resto — isto é a mesma regra).
+                  .filter(({ n }) => n <= maxInstallments)
+                  .map(({ n, label, desc }) => {
                   const parts = splitInstallments(effectivePrice, n);
                   const per = parts[parts.length - 1];
                   const first = parts[0];
@@ -1067,8 +1072,9 @@ export function RegistrationForm({
                   );
                 })}
                 <p className="text-[11px] leading-snug text-muted">
-                  No carnê, a 1ª parcela vence agora e garante sua vaga; as demais
-                  vencem a cada 30 dias. Você paga e envia o comprovante de cada uma.
+                  {maxInstallments < 2
+                    ? "O parcelamento não está mais disponível: falta pouco para o acampamento e toda parcela precisa vencer antes dele."
+                    : "No carnê, a 1ª parcela vence agora e garante sua vaga; as demais vencem a cada 30 dias. Você paga e envia o comprovante de cada uma."}
                 </p>
               </fieldset>
             )}

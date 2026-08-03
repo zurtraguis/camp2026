@@ -59,3 +59,38 @@ export function couponUsable(
 export function isValidPercent(p: number): boolean {
   return Number.isInteger(p) && p >= MIN_PERCENT && p <= MAX_PERCENT;
 }
+
+/* ── Cupom retroativo (admin) ──────────────────────────────────────────────
+ * Caso real: a família se inscreveu e esqueceu de aplicar o cupom. O admin
+ * aplica depois, e o valor devido é recalculado.
+ *
+ * Só vale enquanto NADA foi pago: com dinheiro já confirmado, aplicar desconto
+ * criaria um crédito a devolver — e não existe fluxo de devolução no sistema.
+ * Nesse caso a decisão é humana (devolver por fora), não do código.
+ */
+
+export interface PagamentoParaCupom {
+  status: string;
+  couponCode: string | null;
+  installments: { status: string }[];
+}
+
+/** Motivo pelo qual NÃO dá para aplicar cupom retroativo, ou null se dá. */
+export function bloqueioCupomRetroativo(p: PagamentoParaCupom): string | null {
+  if (p.couponCode) {
+    return `Esta inscrição já usou o cupom ${p.couponCode}.`;
+  }
+  if (p.status === "CONFIRMED") {
+    return "Pagamento já confirmado — o desconto viraria um valor a devolver. Trate a devolução por fora.";
+  }
+  if (p.status === "AWAITING_REVIEW") {
+    return "Há um comprovante aguardando revisão — decida sobre ele antes de mexer no valor.";
+  }
+  if (p.installments.some((i) => i.status === "CONFIRMED")) {
+    return "Este carnê já tem parcela paga — o desconto viraria um valor a devolver. Trate a devolução por fora.";
+  }
+  if (p.installments.some((i) => i.status === "AWAITING_REVIEW")) {
+    return "Há parcela com comprovante aguardando revisão — decida sobre ela antes de mexer no valor.";
+  }
+  return null;
+}

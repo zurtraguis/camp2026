@@ -3,11 +3,13 @@
  * "duas famílias enviam ao mesmo tempo" decide se o desconto estoura o limite.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
-import { db, resetDb, seedLotes, inscricaoValida } from "./helpers";
+import { db, resetDb, seedLotes, seedAdmin, inscricaoValida } from "./helpers";
 import {
   createRegistration,
   deleteRegistration,
 } from "@/lib/registration.service";
+import { aplicarCupomRetroativo } from "@/lib/coupon.service";
+import { baixaManualPagamento } from "@/lib/payment.service";
 
 beforeAll(seedLotes);
 beforeEach(resetDb);
@@ -150,5 +152,101 @@ describe("criação de inscrição", () => {
     const b = await createRegistration(inscricaoValida({ cpf: "22222222222" }));
     expect(a.publicCode).not.toBe(b.publicCode);
     expect(a.publicCode).toMatch(/^RAIZ-/);
+  });
+});
+
+describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
+  it("à vista: recalcula o valor e registra a auditoria", async () => {
+    await criarCupom({ percentOff: 10 });
+    const criada = await createRegistration(inscricaoValida());
+    const antes = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+    expect(antes.amountCents).toBe(30000);
+
+    const admin = await seedAdmin();
+    const r = await aplicarCupomRetroativo(antes.id, "raiz10", admin);
+
+    expect(r).toEqual({ antesCents: 30000, depoisCents: 27000, percentOff: 10 });
+    const pg = await db.payment.findUniqueOrThrow({ where: { id: antes.id } });
+    expect(pg.amountCents).toBe(27000);
+    expect(pg.originalAmountCents).toBe(30000);
+    expect(pg.couponCode).toBe("RAIZ10");
+    expect(pg.reviewedById).toBe(admin);
+    expect(pg.reviewNote).toMatch(/aplicado pelo admin/i);
+
+    const cupom = await db.coupon.findUniqueOrThrow({ where: { code: "RAIZ10" } });
+    expect(cupom.uses).toBe(1); // consome o uso, como qualquer aplicação
+  });
+
+  it("carnê: redivide as parcelas e a soma fecha com o novo total", async () => {
+    await criarCupom({ percentOff: 10 });
+    const criada = await createRegistration(inscricaoValida({ installments: 2 }));
+    const pg0 = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+      include: { installments: true },
+    });
+    const admin = await seedAdmin();
+
+    await aplicarCupomRetroativo(pg0.id, "RAIZ10", admin);
+
+    const pg = await db.payment.findUniqueOrThrow({
+      where: { id: pg0.id },
+      include: { installments: true },
+    });
+    expect(pg.amountCents).toBe(27000);
+    const soma = pg.installments.reduce((s, i) => s + i.amountCents, 0);
+    expect(soma).toBe(27000);
+  });
+
+  it("recusa se já houver dinheiro confirmado", async () => {
+    await criarCupom({ percentOff: 10 });
+    const criada = await createRegistration(inscricaoValida());
+    const pg = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+    const admin = await seedAdmin();
+    await baixaManualPagamento(pg.id, admin, "DINHEIRO");
+
+    await expect(aplicarCupomRetroativo(pg.id, "RAIZ10", admin)).rejects.toThrow(
+      /devolver/i,
+    );
+    // O valor não foi mexido.
+    expect(
+      (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
+    ).toBe(30000);
+  });
+
+  it("recusa aplicar um segundo cupom (não compõe descontos)", async () => {
+    await criarCupom({ percentOff: 10 });
+    await criarCupom({ code: "OUTRO20", percentOff: 20 });
+    const criada = await createRegistration(
+      inscricaoValida({ couponCode: "RAIZ10" }),
+    );
+    const pg = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+    const admin = await seedAdmin();
+
+    await expect(aplicarCupomRetroativo(pg.id, "OUTRO20", admin)).rejects.toThrow(
+      /já usou o cupom/i,
+    );
+    expect(
+      (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
+    ).toBe(27000);
+  });
+
+  it("cupom esgotado é recusado e nada muda", async () => {
+    await criarCupom({ maxUses: 1, uses: 1 });
+    const criada = await createRegistration(inscricaoValida());
+    const pg = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+    const admin = await seedAdmin();
+
+    await expect(aplicarCupomRetroativo(pg.id, "RAIZ10", admin)).rejects.toThrow();
+    expect(
+      (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
+    ).toBe(30000);
   });
 });

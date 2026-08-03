@@ -6,8 +6,10 @@ import {
   applyPercentOff,
   couponUsable,
   normalizeCouponCode,
+  bloqueioCupomRetroativo,
   COUPON_REASON_LABEL,
 } from "@/lib/coupon";
+import { splitInstallments } from "@/lib/carne";
 
 export interface CouponPreview {
   ok: boolean;
@@ -136,4 +138,72 @@ export async function createCoupon(input: CreateCouponInput) {
 /** Liga/desliga um cupom. */
 export async function setCouponActive(id: string, active: boolean) {
   await db.coupon.update({ where: { id }, data: { active } });
+}
+
+/**
+ * Aplica um cupom a uma inscrição JÁ CRIADA (a família esqueceu na hora).
+ * Recalcula o valor devido e, no carnê, redivide as parcelas.
+ *
+ * Só roda enquanto nada foi pago nem está em revisão — ver
+ * `bloqueioCupomRetroativo`. O cupom é consumido normalmente (uses +1), então
+ * conta para o `maxUses` como qualquer outro uso.
+ *
+ * O valor base é `originalAmountCents` quando já existir; senão o `amountCents`
+ * atual — assim aplicar sobre um valor já descontado nunca compõe descontos.
+ */
+export async function aplicarCupomRetroativo(
+  paymentId: string,
+  rawCode: string,
+  adminId: string,
+): Promise<{ antesCents: number; depoisCents: number; percentOff: number }> {
+  const code = normalizeCouponCode(rawCode);
+  if (!code) throw new Error("Informe o código do cupom.");
+
+  return db.$transaction(
+    async (tx) => {
+      const p = await tx.payment.findUnique({
+        where: { id: paymentId },
+        include: { installments: { orderBy: { number: "asc" } } },
+      });
+      if (!p) throw new Error("Pagamento não encontrado.");
+
+      const bloqueio = bloqueioCupomRetroativo(p);
+      if (bloqueio) throw new Error(bloqueio);
+
+      const cupom = await resolveAndConsumeCoupon(tx, code, new Date());
+      if (!cupom) throw new Error("Informe o código do cupom.");
+
+      const base = p.originalAmountCents ?? p.amountCents;
+      const novo = applyPercentOff(base, cupom.percentOff);
+
+      await tx.payment.update({
+        where: { id: p.id },
+        data: {
+          amountCents: novo,
+          originalAmountCents: base,
+          couponId: cupom.couponId,
+          couponCode: cupom.code,
+          discountPercent: cupom.percentOff,
+          reviewedById: adminId,
+          reviewedAt: new Date(),
+          reviewNote: `Cupom ${cupom.code} (−${cupom.percentOff}%) aplicado pelo admin após a inscrição.`,
+        },
+      });
+
+      // Carnê: redivide o novo total pelas parcelas (nenhuma está paga — o
+      // guard garante), preservando os vencimentos já combinados.
+      if (p.installments.length > 0) {
+        const valores = splitInstallments(novo, p.installments.length);
+        for (let i = 0; i < p.installments.length; i++) {
+          await tx.installment.update({
+            where: { id: p.installments[i].id },
+            data: { amountCents: valores[i] },
+          });
+        }
+      }
+
+      return { antesCents: p.amountCents, depoisCents: novo, percentOff: cupom.percentOff };
+    },
+    { isolationLevel: "Serializable" },
+  );
 }

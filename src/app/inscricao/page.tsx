@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getActiveLote, type ActiveLote } from "@/lib/lote.service";
+import { maxInstallmentsForDate } from "@/lib/carne";
 import { env } from "@/lib/env";
 import { Callout } from "@/components/ui";
 import { RegistrationArtShell } from "./RegistrationArtShell";
@@ -72,6 +73,9 @@ export default async function InscricaoPage() {
             priceCents={lote.priceCents}
             loteName={lote.name}
             cardOnlineEnabled={env.NEXT_PUBLIC_CARD_ONLINE_ENABLED}
+            // Teto de parcelas calculado no servidor: encolhe conforme o
+            // acampamento se aproxima (toda parcela vence antes do evento).
+            maxInstallments={maxInstallmentsForDate(new Date())}
           />
         </>
       )}

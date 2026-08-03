@@ -5,6 +5,7 @@ import {
   applyPercentOff,
   couponUsable,
   isValidPercent,
+  bloqueioCupomRetroativo,
   type CouponLike,
 } from "./coupon";
 import { couponSchema } from "./validation";
@@ -138,5 +139,58 @@ describe("couponSchema (criação no admin)", () => {
     expect(couponSchema.safeParse({ ...ok, code: "AB" }).success).toBe(false);
     expect(couponSchema.safeParse({ ...ok, code: "RAIZ 10" }).success).toBe(false);
     expect(couponSchema.safeParse({ ...ok, code: "RAIZ@10" }).success).toBe(false);
+  });
+});
+
+describe("bloqueioCupomRetroativo", () => {
+  const base = { status: "PENDING", couponCode: null, installments: [] as { status: string }[] };
+
+  it("nada pago e sem cupom → pode aplicar", () => {
+    expect(bloqueioCupomRetroativo(base)).toBeNull();
+  });
+
+  it("já tem cupom → recusa (não compõe descontos)", () => {
+    expect(bloqueioCupomRetroativo({ ...base, couponCode: "RAIZ10" })).toMatch(
+      /já usou o cupom RAIZ10/,
+    );
+  });
+
+  it("pagamento confirmado → recusa, viraria valor a devolver", () => {
+    expect(bloqueioCupomRetroativo({ ...base, status: "CONFIRMED" })).toMatch(
+      /devolver/,
+    );
+  });
+
+  it("comprovante na fila → decida antes", () => {
+    expect(bloqueioCupomRetroativo({ ...base, status: "AWAITING_REVIEW" })).toMatch(
+      /aguardando revisão/,
+    );
+  });
+
+  it("carnê com parcela paga → recusa", () => {
+    expect(
+      bloqueioCupomRetroativo({
+        ...base,
+        installments: [{ status: "CONFIRMED" }, { status: "PENDING" }],
+      }),
+    ).toMatch(/devolver/);
+  });
+
+  it("carnê com parcela na fila → decida antes", () => {
+    expect(
+      bloqueioCupomRetroativo({
+        ...base,
+        installments: [{ status: "AWAITING_REVIEW" }, { status: "PENDING" }],
+      }),
+    ).toMatch(/aguardando revisão/);
+  });
+
+  it("carnê totalmente em aberto → pode aplicar", () => {
+    expect(
+      bloqueioCupomRetroativo({
+        ...base,
+        installments: [{ status: "PENDING" }, { status: "PENDING" }],
+      }),
+    ).toBeNull();
   });
 });

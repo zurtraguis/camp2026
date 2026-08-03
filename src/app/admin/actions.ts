@@ -16,7 +16,12 @@ import {
   baixaManualSchema,
   couponSchema,
 } from "@/lib/validation";
-import { createCoupon, setCouponActive } from "@/lib/coupon.service";
+import {
+  createCoupon,
+  setCouponActive,
+  aplicarCupomRetroativo,
+} from "@/lib/coupon.service";
+import { formatBRL } from "@/lib/format";
 import { deleteRegistration } from "@/lib/registration.service";
 import {
   reviewPixPayment,
@@ -246,6 +251,37 @@ export async function createCouponAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao criar o cupom.",
+    };
+  }
+}
+
+/**
+ * Aplica um cupom a uma inscrição já criada (a família esqueceu na hora).
+ * Recalcula o valor devido; no carnê, redivide as parcelas. Só enquanto nada
+ * foi pago — as guardas ficam no serviço.
+ */
+export async function aplicarCupomAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const paymentId = String(formData.get("paymentId") ?? "");
+  const code = String(formData.get("code") ?? "");
+  if (!paymentId) return { ok: false, message: "Pagamento inválido." };
+  if (!code.trim()) return { ok: false, message: "Informe o código do cupom." };
+
+  try {
+    const r = await aplicarCupomRetroativo(paymentId, code, admin.id);
+    revalidatePath("/admin");
+    revalidatePath("/admin/em-aberto");
+    return {
+      ok: true,
+      message: `Cupom aplicado (−${r.percentOff}%): de ${formatBRL(r.antesCents)} para ${formatBRL(r.depoisCents)}.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao aplicar o cupom.",
     };
   }
 }

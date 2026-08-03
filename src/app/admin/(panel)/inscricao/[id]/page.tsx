@@ -6,7 +6,10 @@ import { carneProgress } from "@/lib/carne";
 import { TRIBO_META } from "@/lib/tribos";
 import { TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { signedReceiptUrl } from "@/lib/storage";
+import { bloqueioCupomRetroativo } from "@/lib/coupon";
 import { Badge, ButtonLink, Card } from "@/components/ui";
+import { ReviewForm } from "@/app/admin/(panel)/em-aberto/ReviewForm";
+import { AplicarCupomForm } from "./AplicarCupomForm";
 import { DeleteRegistrationForm } from "./DeleteRegistrationForm";
 import Link from "next/link";
 
@@ -107,6 +110,7 @@ type FullRegistration = {
     ip: string | null;
   } | null;
   payment: {
+    id: string;
     method: string;
     status: string;
     amountCents: number;
@@ -117,6 +121,7 @@ type FullRegistration = {
       amountCents: number;
       dueDate: Date;
       status: string;
+      pixReceiptPath: string | null;
     }[];
     couponCode: string | null;
     discountPercent: number | null;
@@ -148,6 +153,11 @@ export default async function InscricaoDetailPage({ params }: Props) {
 
   const triboMeta = reg.tribo ? TRIBO_META[reg.tribo as keyof typeof TRIBO_META] : null;
 
+  // Cupom retroativo só faz sentido enquanto nada foi pago (senão viraria
+  // valor a devolver). A regra vive em lib/coupon; aqui é só a exibição.
+  const podeAplicarCupom =
+    reg.payment !== null && bloqueioCupomRetroativo(reg.payment) === null;
+
   const carne = reg.payment ? carneProgress(reg.payment) : null;
   const formaLabel = carne?.carne
     ? `Carnê em ${carne.total}x — ${carne.pagas}/${carne.total} confirmada(s)`
@@ -160,6 +170,19 @@ export default async function InscricaoDetailPage({ params }: Props) {
       receiptUrl = await signedReceiptUrl(reg.payment.pixReceiptPath, 900);
     } catch {
       receiptUrl = null;
+    }
+  }
+
+  // Comprovante de CADA parcela do carnê: sem isso, a ficha mostrava o carnê
+  // mas não deixava ver nem decidir sobre a prova de cada parcela — obrigando
+  // a voltar para Em aberto e reencontrar a linha.
+  const parcelaReceipts = new Map<string, string | null>();
+  for (const inst of reg.payment?.installments ?? []) {
+    if (!inst.pixReceiptPath) continue;
+    try {
+      parcelaReceipts.set(inst.id, await signedReceiptUrl(inst.pixReceiptPath, 900));
+    } catch {
+      parcelaReceipts.set(inst.id, null);
     }
   }
 
@@ -319,30 +342,55 @@ export default async function InscricaoDetailPage({ params }: Props) {
                   Parcelas do carnê
                 </p>
                 <ul className="divide-y divide-border rounded-lg border border-border">
-                  {reg.payment.installments.map((inst) => (
-                    <li
-                      key={inst.id}
-                      className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                    >
-                      <span className="text-muted">
-                        {inst.number}ª · vence{" "}
-                        {inst.dueDate.toLocaleDateString("pt-BR")}
-                      </span>
-                      <span className="flex items-center gap-3">
-                        <span className="tabular-nums text-creme">
-                          {formatBRL(inst.amountCents)}
-                        </span>
-                        <Badge
-                          className={
-                            PAYMENT_STATUS_COLORS[inst.status] ??
-                            "border-border bg-surface-2 text-muted"
-                          }
-                        >
-                          {PAYMENT_STATUS_LABELS[inst.status] ?? inst.status}
-                        </Badge>
-                      </span>
-                    </li>
-                  ))}
+                  {reg.payment.installments.map((inst) => {
+                    const url = parcelaReceipts.get(inst.id);
+                    const naFila = inst.status === "AWAITING_REVIEW";
+                    return (
+                      <li key={inst.id} className="px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted">
+                            {inst.number}ª · vence{" "}
+                            {inst.dueDate.toLocaleDateString("pt-BR")}
+                          </span>
+                          <span className="flex items-center gap-3">
+                            <span className="tabular-nums text-creme">
+                              {formatBRL(inst.amountCents)}
+                            </span>
+                            <Badge
+                              className={
+                                PAYMENT_STATUS_COLORS[inst.status] ??
+                                "border-border bg-surface-2 text-muted"
+                              }
+                            >
+                              {PAYMENT_STATUS_LABELS[inst.status] ?? inst.status}
+                            </Badge>
+                          </span>
+                        </div>
+
+                        {/* Comprovante + decisão da parcela, aqui mesmo. */}
+                        {(url || naFila) && (
+                          <div className="mt-2 space-y-2 rounded-lg border border-info/30 bg-info/5 p-2">
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-2.5 py-1 text-xs text-creme transition-colors hover:bg-border focus-visible:outline-2 focus-visible:outline-verde-limao"
+                              >
+                                Ver comprovante da {inst.number}ª
+                                <span className="text-muted">(15 min)</span>
+                              </a>
+                            ) : (
+                              <p className="text-xs italic text-muted">
+                                Comprovante enviado, mas o link falhou (storage).
+                              </p>
+                            )}
+                            {naFila && <ReviewForm installmentId={inst.id} />}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -381,6 +429,20 @@ export default async function InscricaoDetailPage({ params }: Props) {
                 storage).
               </p>
             )}
+
+            {/* Decisão do Pix à vista, sem sair da ficha. */}
+            {reg.payment.status === "AWAITING_REVIEW" &&
+              reg.payment.installments.length === 0 && (
+                <div className="mt-4 rounded-lg border border-info/30 bg-info/5 p-3">
+                  <p className="mb-2 text-xs font-condensed uppercase tracking-wide text-info">
+                    Comprovante aguardando sua decisão
+                  </p>
+                  <ReviewForm paymentId={reg.payment.id} />
+                </div>
+              )}
+
+            {/* Cupom esquecido na inscrição — só enquanto nada foi pago. */}
+            {podeAplicarCupom && <AplicarCupomForm paymentId={reg.payment.id} />}
           </Card>
         )}
 
