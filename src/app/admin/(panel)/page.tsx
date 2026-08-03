@@ -127,7 +127,7 @@ export default async function AdminDashboardPage() {
           </p>
         </div>
         <ButtonLink href="/admin/export" variant="secondary" size="sm">
-          Exportar CSV
+          Exportar planilha
         </ButtonLink>
       </div>
 
@@ -188,7 +188,8 @@ export default async function AdminDashboardPage() {
           label="Total em caixa"
           value={formatBRL(emCaixaCents)}
           accent="text-verde-limao"
-          hint="Pagamentos e parcelas já confirmados"
+          hint="Ver de onde veio →"
+          href="/admin/recebidos"
         />
         <SummaryCard
           label="A receber"

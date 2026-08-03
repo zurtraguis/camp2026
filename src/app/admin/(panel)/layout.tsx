@@ -10,6 +10,7 @@
  *       ├── layout.tsx   ← chama requireAdmin(); redireciona para /admin/login
  *       ├── page.tsx     ← dashboard (/admin)
  *       ├── em-aberto/   ← pagamentos: cobrança, revisão, baixa, troca de forma
+ *       ├── recebidos/   ← extrato: de onde veio o dinheiro em caixa
  *       ├── pagamentos/  ← só redirect para em-aberto (links antigos)
  *       ├── tribos/
  *       ├── inscricao/[id]/
@@ -56,6 +57,7 @@ export default async function AdminPanelLayout({
             <NavLink href="/admin">Inscrições</NavLink>
             <NavLink href="/admin/tribos">Tribos</NavLink>
             <NavLink href="/admin/em-aberto">Em aberto</NavLink>
+            <NavLink href="/admin/recebidos">Recebidos</NavLink>
             <NavLink href="/admin/cupons">Cupons</NavLink>
           </nav>
 
@@ -88,6 +90,7 @@ export default async function AdminPanelLayout({
           <NavLink href="/admin">Inscrições</NavLink>
           <NavLink href="/admin/tribos">Tribos</NavLink>
           <NavLink href="/admin/em-aberto">Em aberto</NavLink>
+          <NavLink href="/admin/recebidos">Recebidos</NavLink>
           <NavLink href="/admin/cupons">Cupons</NavLink>
         </nav>
       </header>
