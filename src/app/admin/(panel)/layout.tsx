@@ -11,6 +11,7 @@
  *       ├── page.tsx     ← dashboard (/admin)
  *       ├── em-aberto/   ← pagamentos: cobrança, revisão, baixa, troca de forma
  *       ├── recebidos/   ← extrato: de onde veio o dinheiro em caixa
+ *       ├── saude/       ← relatório médico (LGPD art. 11, acesso restrito)
  *       ├── pagamentos/  ← só redirect para em-aberto (links antigos)
  *       ├── tribos/
  *       ├── inscricao/[id]/
@@ -58,6 +59,7 @@ export default async function AdminPanelLayout({
             <NavLink href="/admin/tribos">Tribos</NavLink>
             <NavLink href="/admin/em-aberto">Em aberto</NavLink>
             <NavLink href="/admin/recebidos">Recebidos</NavLink>
+            <NavLink href="/admin/saude">Saúde</NavLink>
             <NavLink href="/admin/cupons">Cupons</NavLink>
           </nav>
 
@@ -91,6 +93,7 @@ export default async function AdminPanelLayout({
           <NavLink href="/admin/tribos">Tribos</NavLink>
           <NavLink href="/admin/em-aberto">Em aberto</NavLink>
           <NavLink href="/admin/recebidos">Recebidos</NavLink>
+          <NavLink href="/admin/saude">Saúde</NavLink>
           <NavLink href="/admin/cupons">Cupons</NavLink>
         </nav>
       </header>

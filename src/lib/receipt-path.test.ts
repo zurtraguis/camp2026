@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { receiptPath } from "./receipt-path";
+import {
+  receiptPath,
+  marcarSupabase,
+  isSupabasePath,
+  stripBackendPrefix,
+} from "./receipt-path";
 
 describe("receiptPath", () => {
   const reg = "reg_abc123";
@@ -38,5 +43,29 @@ describe("receiptPath", () => {
   it("preserva a extensão real do arquivo", () => {
     expect(receiptPath(reg, "avista", "pdf", "u1").endsWith(".pdf")).toBe(true);
     expect(receiptPath(reg, "avista", "webp", "u1").endsWith(".webp")).toBe(true);
+  });
+});
+
+describe("marcador de backend", () => {
+  const p = receiptPath("reg_1", "avista", "jpg", "u1");
+
+  it("caminho sem prefixo é S3 (inclui os já gravados antes deste fix)", () => {
+    expect(isSupabasePath(p)).toBe(false);
+    expect(stripBackendPrefix(p)).toBe(p);
+  });
+
+  it("marcarSupabase sinaliza o fallback sem perder o caminho real", () => {
+    const m = marcarSupabase(p);
+    expect(isSupabasePath(m)).toBe(true);
+    expect(stripBackendPrefix(m)).toBe(p);
+  });
+
+  it("marcar é idempotente na leitura (strip devolve sempre o mesmo)", () => {
+    expect(stripBackendPrefix(stripBackendPrefix(marcarSupabase(p)))).toBe(p);
+  });
+
+  it("o marcador não colide com um caminho legítimo", () => {
+    // Ids do Prisma são cuid/uuid — nunca começam com "sb:".
+    expect(isSupabasePath("cmrihoxst001x/avista/1-a.jpg")).toBe(false);
   });
 });

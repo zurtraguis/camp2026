@@ -17,3 +17,25 @@ export function receiptPath(
   const safe = scope.replace(/[^A-Za-z0-9_-]/g, "") || "avista";
   return `${registrationId}/${safe}/${unique}.${ext}`;
 }
+
+/**
+ * Marcador de backend no caminho gravado no banco.
+ *
+ * O upload cai para o Supabase quando o S3 está fora. Sem registrar ONDE o
+ * arquivo ficou, a leitura procuraria no backend errado e o admin veria um
+ * link quebrado. Caminho sem prefixo = S3 (inclusive os antigos).
+ */
+const PREFIXO_SUPABASE = "sb:";
+
+export function marcarSupabase(path: string): string {
+  return `${PREFIXO_SUPABASE}${path}`;
+}
+
+export function isSupabasePath(path: string): boolean {
+  return path.startsWith(PREFIXO_SUPABASE);
+}
+
+/** Caminho real dentro do bucket, sem o marcador. */
+export function stripBackendPrefix(path: string): string {
+  return isSupabasePath(path) ? path.slice(PREFIXO_SUPABASE.length) : path;
+}
