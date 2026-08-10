@@ -4,6 +4,7 @@ import { couponUsable } from "@/lib/coupon";
 import { Badge, Card } from "@/components/ui";
 import { CreateCouponForm } from "./CreateCouponForm";
 import { ToggleCouponForm } from "./ToggleCouponForm";
+import { EditCouponForm } from "./EditCouponForm";
 
 export const metadata = { title: "Cupons" };
 
@@ -72,7 +73,21 @@ export default async function CuponsPage() {
                         />
                       </Td>
                       <Td>
-                        <ToggleCouponForm id={c.id} active={c.active} />
+                        <div className="flex flex-col items-start gap-2">
+                          <EditCouponForm
+                            id={c.id}
+                            code={c.code}
+                            percentOff={c.percentOff}
+                            expiresAt={
+                              c.expiresAt
+                                ? c.expiresAt.toISOString().slice(0, 10)
+                                : ""
+                            }
+                            maxUses={c.maxUses}
+                            uses={c.uses}
+                          />
+                          <ToggleCouponForm id={c.id} active={c.active} />
+                        </div>
                       </Td>
                     </tr>
                   );

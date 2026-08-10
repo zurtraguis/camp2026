@@ -16,7 +16,7 @@ import {
   createRegistration,
   deleteRegistration,
 } from "@/lib/registration.service";
-import { aplicarCupomRetroativo } from "@/lib/coupon.service";
+import { aplicarCupomRetroativo, editCoupon } from "@/lib/coupon.service";
 import { applyPercentOff } from "@/lib/coupon";
 import { baixaManualPagamento } from "@/lib/payment.service";
 
@@ -262,5 +262,56 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     expect(
       (await db.payment.findUniqueOrThrow({ where: { id: pg.id } })).amountCents,
     ).toBe(await precoVigente());
+  });
+});
+
+describe("edição de cupom", () => {
+  it("altera %, validade e limite", async () => {
+    const c = await criarCupom({ percentOff: 10, maxUses: null });
+    await editCoupon({
+      id: c.id,
+      percentOff: 25,
+      expiresAt: new Date("2026-09-01T00:00:00-03:00"),
+      maxUses: 50,
+    });
+
+    const depois = await db.coupon.findUniqueOrThrow({ where: { id: c.id } });
+    expect(depois.percentOff).toBe(25);
+    expect(depois.maxUses).toBe(50);
+    expect(depois.expiresAt).not.toBeNull();
+    expect(depois.code).toBe("RAIZ10"); // código nunca muda
+  });
+
+  it("limite abaixo dos usos já feitos é recusado", async () => {
+    const c = await criarCupom({ maxUses: 10 });
+    await createRegistration(inscricaoValida({ couponCode: "RAIZ10" }));
+    await createRegistration(
+      inscricaoValida({ couponCode: "RAIZ10", cpf: "22222222222" }),
+    );
+
+    await expect(
+      editCoupon({ id: c.id, percentOff: 10, expiresAt: null, maxUses: 1 }),
+    ).rejects.toThrow(/já foi usado 2x/i);
+
+    // Nada mudou.
+    const depois = await db.coupon.findUniqueOrThrow({ where: { id: c.id } });
+    expect(depois.maxUses).toBe(10);
+  });
+
+  it("mudar o % NÃO altera inscrições já criadas", async () => {
+    await criarCupom({ percentOff: 10 });
+    const criada = await createRegistration(
+      inscricaoValida({ couponCode: "RAIZ10" }),
+    );
+    const antes = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+
+    const c = await db.coupon.findUniqueOrThrow({ where: { code: "RAIZ10" } });
+    await editCoupon({ id: c.id, percentOff: 50, expiresAt: null, maxUses: null });
+
+    const depois = await db.payment.findUniqueOrThrow({ where: { id: antes.id } });
+    expect(depois.amountCents).toBe(antes.amountCents); // o combinado na hora vale
+    expect(depois.discountPercent).toBe(10);
   });
 });
