@@ -15,10 +15,12 @@ import {
   installmentReviewSchema,
   baixaManualSchema,
   couponSchema,
+  couponEditSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
   setCouponActive,
+  editCoupon,
   aplicarCupomRetroativo,
 } from "@/lib/coupon.service";
 import { formatBRL } from "@/lib/format";
@@ -282,6 +284,41 @@ export async function aplicarCupomAction(
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao aplicar o cupom.",
+    };
+  }
+}
+
+/** Edita %, validade e limite de usos de um cupom (o código é imutável). */
+export async function editCouponAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = couponEditSchema.safeParse({
+    id: formData.get("id"),
+    percentOff: formData.get("percentOff"),
+    expiresAt: formData.get("expiresAt"),
+    maxUses: formData.get("maxUses"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+  try {
+    await editCoupon({
+      id: parsed.data.id,
+      percentOff: parsed.data.percentOff,
+      expiresAt: parsed.data.expiresAt ?? null,
+      maxUses: parsed.data.maxUses ?? null,
+    });
+    revalidatePath("/admin/cupons");
+    return { ok: true, message: "Cupom atualizado." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao atualizar o cupom.",
     };
   }
 }

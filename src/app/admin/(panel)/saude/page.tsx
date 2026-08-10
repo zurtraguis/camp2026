@@ -18,7 +18,7 @@ import { formatPhone } from "@/lib/format";
 import { TRIBO_META } from "@/lib/tribos";
 import { Badge, Callout, Card } from "@/components/ui";
 import Link from "next/link";
-import { ImprimirButton } from "./ImprimirButton";
+import { RelatorioImpressao, type FichaSaude } from "./RelatorioImpressao";
 
 export const metadata = { title: "Saúde" };
 
@@ -59,6 +59,31 @@ export default async function SaudePage() {
   const comInfo = inscricoes.filter((r) => temAlgo(r.health));
   const semInfo = inscricoes.length - comInfo.length;
 
+  // Mesma lista, achatada e já com os rótulos resolvidos, para o documento de
+  // impressão (client component — não pode receber objetos do Prisma).
+  const fichas: FichaSaude[] = comInfo.map((r) => ({
+    id: r.id,
+    nome: r.fullName,
+    idade: r.ageAtCamp,
+    codigo: r.publicCode,
+    tribo: r.tribo
+      ? (TRIBO_META[r.tribo as keyof typeof TRIBO_META]?.nome ?? null)
+      : null,
+    responsavel: r.guardian?.name ?? null,
+    telefone: (() => {
+      const t = r.guardian?.phone ?? r.phone;
+      return t ? formatPhone(t) : null;
+    })(),
+    alergias: r.health?.allergies ?? null,
+    medicamentos: r.health?.medications ?? null,
+    restricoes: r.health?.dietaryRestrictions ?? null,
+    condicoes: r.health?.chronicConditions ?? null,
+    observacoes: r.health?.healthNotes ?? null,
+    flags: (r.health?.triageFlags ?? []).map(
+      (f) => TRIAGE_FLAG_LABELS[f as keyof typeof TRIAGE_FLAG_LABELS] ?? f,
+    ),
+  }));
+
   // Contagens por tipo, para a equipe saber o tamanho de cada demanda.
   const comAlergia = comInfo.filter((r) => r.health?.allergies).length;
   const comMedicacao = comInfo.filter((r) => r.health?.medications).length;
@@ -73,7 +98,15 @@ export default async function SaudePage() {
             O que a equipe precisa saber sobre quem vai ao acampamento
           </p>
         </div>
-        <ImprimirButton />
+        <RelatorioImpressao
+          fichas={fichas}
+          totalInscritos={inscricoes.length}
+          geradoEm={new Date().toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}
+        />
       </div>
 
       {/* Aviso LGPD — dado sensível de menor. */}

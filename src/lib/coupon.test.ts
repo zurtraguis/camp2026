@@ -8,7 +8,7 @@ import {
   bloqueioCupomRetroativo,
   type CouponLike,
 } from "./coupon";
-import { couponSchema } from "./validation";
+import { couponSchema, couponEditSchema } from "./validation";
 
 describe("normalizeCouponCode", () => {
   it("maiúsculas e trim", () => {
@@ -192,5 +192,42 @@ describe("bloqueioCupomRetroativo", () => {
         installments: [{ status: "PENDING" }, { status: "PENDING" }],
       }),
     ).toBeNull();
+  });
+});
+
+describe("couponEditSchema", () => {
+  const base = { id: "c1", percentOff: "15" };
+
+  it("aceita edição mínima (% obrigatório)", () => {
+    expect(couponEditSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("NÃO aceita mudar o código — os pagamentos guardam o snapshot dele", () => {
+    const r = couponEditSchema.safeParse({ ...base, code: "OUTRO" });
+    expect(r.success).toBe(true);
+    // `code` é removido do schema: mesmo enviado, não chega ao serviço.
+    if (r.success) expect("code" in r.data).toBe(false);
+  });
+
+  it("exige o id", () => {
+    expect(couponEditSchema.safeParse({ percentOff: "15" }).success).toBe(false);
+  });
+
+  it("valida o % igual à criação", () => {
+    expect(couponEditSchema.safeParse({ ...base, percentOff: "0" }).success).toBe(
+      false,
+    );
+    expect(couponEditSchema.safeParse({ ...base, percentOff: "101" }).success).toBe(
+      false,
+    );
+  });
+
+  it("validade e limite vazios viram undefined (= remover a restrição)", () => {
+    const r = couponEditSchema.safeParse({ ...base, expiresAt: "", maxUses: "" });
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.expiresAt).toBeUndefined();
+      expect(r.data.maxUses).toBeUndefined();
+    }
   });
 });

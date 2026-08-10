@@ -153,6 +153,17 @@ export const couponSchema = z.object({
 
 export type CouponInput = z.infer<typeof couponSchema>;
 
+/**
+ * Edição de cupom. O CÓDIGO não entra: os pagamentos guardam um snapshot dele
+ * (`Payment.couponCode`), então renomear quebraria a auditoria de quem já usou.
+ * Para "trocar o código", desative este e crie outro.
+ */
+export const couponEditSchema = couponSchema.omit({ code: true }).extend({
+  id: z.string().min(1),
+});
+
+export type CouponEditInput = z.infer<typeof couponEditSchema>;
+
 export const adminLoginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(1, "Informe a senha"),

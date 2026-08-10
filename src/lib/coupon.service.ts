@@ -140,6 +140,46 @@ export async function setCouponActive(id: string, active: boolean) {
   await db.coupon.update({ where: { id }, data: { active } });
 }
 
+export interface EditCouponInput {
+  id: string;
+  percentOff: number;
+  expiresAt: Date | null;
+  maxUses: number | null;
+}
+
+/**
+ * Edita %, validade e limite de usos. O CÓDIGO é imutável de propósito: os
+ * pagamentos guardam um snapshot dele para auditoria, e renomear deixaria essa
+ * trilha apontando para um cupom que não existe mais com aquele nome.
+ *
+ * O novo `maxUses` não pode ficar abaixo dos usos já feitos — isso deixaria o
+ * cupom num estado impossível (esgotado "por baixo") sem explicar por quê.
+ * Mudar o % NÃO altera inscrições já criadas: elas gravaram o valor no momento
+ * do uso, que é o correto (o desconto combinado na hora vale).
+ */
+export async function editCoupon(input: EditCouponInput) {
+  const atual = await db.coupon.findUnique({
+    where: { id: input.id },
+    select: { uses: true, code: true },
+  });
+  if (!atual) throw new Error("Cupom não encontrado.");
+
+  if (input.maxUses !== null && input.maxUses < atual.uses) {
+    throw new Error(
+      `Este cupom já foi usado ${atual.uses}x — o limite não pode ser menor que isso. Para encerrá-lo, desative.`,
+    );
+  }
+
+  await db.coupon.update({
+    where: { id: input.id },
+    data: {
+      percentOff: input.percentOff,
+      expiresAt: input.expiresAt,
+      maxUses: input.maxUses,
+    },
+  });
+}
+
 /**
  * Aplica um cupom a uma inscrição JÁ CRIADA (a família esqueceu na hora).
  * Recalcula o valor devido e, no carnê, redivide as parcelas.
