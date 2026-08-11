@@ -37,6 +37,10 @@ model User {
   // Auditoria: parcelas de carnê revisadas por este admin.
   reviewedInstallments Installment[] @relation("InstallmentReviewer")
 
+  // Auditoria dos custos do acampamento.
+  createdExpenses  Expense[]        @relation("ExpenseCreator")
+  recordedPayments ExpensePayment[] @relation("ExpensePaymentRecorder")
+
   @@index([isDemo])
 }
 
@@ -317,4 +321,73 @@ model Coupon {
   payments Payment[]
 
   @@index([active])
+}
+
+// Categoria da despesa — o suficiente para agrupar num acampamento.
+enum ExpenseCategory {
+  LOCAL // aluguel/locação do espaço
+  ALIMENTACAO
+  TRANSPORTE
+  MATERIAL // camisetas, papelaria, decoração
+  EQUIPE // preleção, música, saúde
+  ESTRUTURA // som, tenda, limpeza
+  OUTRO
+}
+
+// Uma despesa do acampamento (ex.: aluguel do sítio). O VALOR TOTAL fica aqui;
+// o que já saiu do caixa vive em `payments` — uma despesa pode ser paga em
+// partes (a entrada do aluguel, depois o restante), e é isso que permite
+// acompanhar o que ainda falta pagar.
+model Expense {
+  id          String          @id @default(cuid())
+  description String
+  category    ExpenseCategory @default(OUTRO)
+  /// Valor total combinado, em centavos.
+  amountCents Int
+  /// Fornecedor/quem recebe (opcional).
+  supplier    String?
+  /// Vencimento do saldo, quando houver.
+  dueDate     DateTime?
+  notes       String?
+
+  createdById String?
+  createdBy   User?   @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  payments ExpensePayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([dueDate])
+}
+
+// Uma saída de dinheiro referente a uma despesa. Vários por despesa: a entrada
+// de R$2.000 do aluguel é um, o restante é outro.
+model ExpensePayment {
+  id          String          @id @default(cuid())
+  expenseId   String
+  amountCents Int
+  paidAt      DateTime
+  method      FormaPagamentoDespesa @default(PIX)
+  notes       String?
+
+  recordedById String?
+  recordedBy   User?   @relation("ExpensePaymentRecorder", fields: [recordedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@index([expenseId])
+  @@index([paidAt])
+}
+
+enum FormaPagamentoDespesa {
+  PIX
+  DINHEIRO
+  CARTAO
+  TRANSFERENCIA
+  BOLETO
+  OUTRO
 }

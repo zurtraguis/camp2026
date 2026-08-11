@@ -16,6 +16,9 @@ import {
   baixaManualSchema,
   couponSchema,
   couponEditSchema,
+  despesaSchema,
+  despesaEditSchema,
+  pagamentoDespesaSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
@@ -32,6 +35,13 @@ import {
   baixaManualParcela,
   alterarFormaPagamento,
 } from "@/lib/payment.service";
+import {
+  criarDespesa,
+  editarDespesa,
+  registrarPagamentoDespesa,
+  removerPagamentoDespesa,
+  removerDespesa,
+} from "@/lib/custos.service";
 import { rebalance, type Camper, type Gender } from "@/lib/tribos";
 
 export interface LoginState {
@@ -367,6 +377,181 @@ export async function deleteRegistrationAction(
   }
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+/* ── Custos do acampamento ───────────────────────────────────────────────── */
+
+/** Cadastra uma despesa; opcionalmente já registra o que foi pago. */
+export async function criarDespesaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const parsed = despesaSchema.safeParse({
+    description: formData.get("description"),
+    category: formData.get("category"),
+    amountCents: formData.get("amountCents"),
+    supplier: formData.get("supplier"),
+    dueDate: formData.get("dueDate"),
+    notes: formData.get("notes"),
+    pagoAgora: formData.get("pagoAgora"),
+    pagoAgoraEm: formData.get("pagoAgoraEm"),
+    pagoAgoraForma: formData.get("pagoAgoraForma") || undefined,
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+
+  try {
+    await criarDespesa(
+      {
+        description: parsed.data.description,
+        category: parsed.data.category,
+        amountCents: parsed.data.amountCents,
+        supplier: parsed.data.supplier ?? null,
+        dueDate: parsed.data.dueDate ?? null,
+        notes: parsed.data.notes ?? null,
+        pagoAgoraCents: parsed.data.pagoAgora,
+        pagoAgoraEm: parsed.data.pagoAgoraEm,
+        pagoAgoraForma: parsed.data.pagoAgoraForma,
+      },
+      admin.id,
+    );
+    revalidatePath("/admin/custos");
+    return { ok: true, message: "Despesa cadastrada." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao cadastrar.",
+    };
+  }
+}
+
+/** Registra um pagamento (total ou parcial) de uma despesa. */
+export async function pagarDespesaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  const admin = await requireAdmin();
+  const parsed = pagamentoDespesaSchema.safeParse({
+    expenseId: formData.get("expenseId"),
+    amountCents: formData.get("amountCents"),
+    paidAt: formData.get("paidAt"),
+    method: formData.get("method"),
+    notes: formData.get("notes"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+
+  try {
+    await registrarPagamentoDespesa(
+      {
+        expenseId: parsed.data.expenseId,
+        amountCents: parsed.data.amountCents,
+        paidAt: parsed.data.paidAt,
+        method: parsed.data.method,
+        notes: parsed.data.notes ?? null,
+      },
+      admin.id,
+    );
+    revalidatePath("/admin/custos");
+    return {
+      ok: true,
+      message: `Pagamento de ${formatBRL(parsed.data.amountCents)} registrado.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao registrar.",
+    };
+  }
+}
+
+/** Edita a despesa (não mexe nos pagamentos já lançados). */
+export async function editarDespesaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = despesaEditSchema.safeParse({
+    id: formData.get("id"),
+    description: formData.get("description"),
+    category: formData.get("category"),
+    amountCents: formData.get("amountCents"),
+    supplier: formData.get("supplier"),
+    dueDate: formData.get("dueDate"),
+    notes: formData.get("notes"),
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+  try {
+    await editarDespesa(parsed.data.id, {
+      description: parsed.data.description,
+      category: parsed.data.category,
+      amountCents: parsed.data.amountCents,
+      supplier: parsed.data.supplier ?? null,
+      dueDate: parsed.data.dueDate ?? null,
+      notes: parsed.data.notes ?? null,
+    });
+    revalidatePath("/admin/custos");
+    return { ok: true, message: "Despesa atualizada." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao atualizar.",
+    };
+  }
+}
+
+/** Remove um pagamento lançado por engano. */
+export async function removerPagamentoDespesaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Pagamento inválido." };
+  try {
+    await removerPagamentoDespesa(id);
+    revalidatePath("/admin/custos");
+    return { ok: true, message: "Pagamento removido." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao remover.",
+    };
+  }
+}
+
+/** Remove a despesa e os pagamentos dela. */
+export async function removerDespesaAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Despesa inválida." };
+  try {
+    await removerDespesa(id);
+    revalidatePath("/admin/custos");
+    return { ok: true, message: "Despesa removida." };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao remover.",
+    };
+  }
 }
 
 /** Re-balanceia todas as tribos (snake draft offline). Reatribui todos. */

@@ -164,6 +164,61 @@ export const couponEditSchema = couponSchema.omit({ code: true }).extend({
 
 export type CouponEditInput = z.infer<typeof couponEditSchema>;
 
+/* ── Custos do acampamento ───────────────────────────────────────────────── */
+
+/** "1.234,56" ou "1234.56" → centavos. Aceita o que o organizador digita. */
+const valorBRL = z
+  .string()
+  .trim()
+  .min(1, "Informe o valor.")
+  .transform((s) => s.replace(/[R$\s.]/g, "").replace(",", "."))
+  .refine((s) => /^\d+(\.\d{1,2})?$/.test(s), "Valor inválido (ex.: 2.000,00)")
+  .transform((s) => Math.round(Number(s) * 100));
+
+const CATEGORIAS_DESPESA = [
+  "LOCAL",
+  "ALIMENTACAO",
+  "TRANSPORTE",
+  "MATERIAL",
+  "EQUIPE",
+  "ESTRUTURA",
+  "OUTRO",
+] as const;
+
+const FORMAS_DESPESA = [
+  "PIX",
+  "DINHEIRO",
+  "CARTAO",
+  "TRANSFERENCIA",
+  "BOLETO",
+  "OUTRO",
+] as const;
+
+export const despesaSchema = z.object({
+  description: z.string().trim().min(2, "Descreva a despesa.").max(160),
+  category: z.enum(CATEGORIAS_DESPESA),
+  amountCents: valorBRL,
+  supplier: z.preprocess(emptyToUndef, z.string().trim().max(120).optional()),
+  dueDate: z.preprocess(emptyToUndef, z.coerce.date().optional()),
+  notes: z.preprocess(emptyToUndef, z.string().trim().max(500).optional()),
+  // Pagamento já feito no cadastro (ex.: a entrada do aluguel).
+  pagoAgora: z.preprocess(emptyToUndef, valorBRL.optional()),
+  pagoAgoraEm: z.preprocess(emptyToUndef, z.coerce.date().optional()),
+  pagoAgoraForma: z.enum(FORMAS_DESPESA).optional(),
+});
+
+export const despesaEditSchema = despesaSchema
+  .omit({ pagoAgora: true, pagoAgoraEm: true, pagoAgoraForma: true })
+  .extend({ id: z.string().min(1) });
+
+export const pagamentoDespesaSchema = z.object({
+  expenseId: z.string().min(1),
+  amountCents: valorBRL,
+  paidAt: z.coerce.date(),
+  method: z.enum(FORMAS_DESPESA),
+  notes: z.preprocess(emptyToUndef, z.string().trim().max(300).optional()),
+});
+
 export const adminLoginSchema = z.object({
   email: z.string().email("E-mail inválido"),
   password: z.string().min(1, "Informe a senha"),
