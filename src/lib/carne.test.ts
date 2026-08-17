@@ -167,11 +167,34 @@ describe("maxInstallmentsForDate — teto encolhe até o acampamento", () => {
     expect(maxInstallmentsForDate(em("2026-10-01"), CAMP)).toBe(1);
   });
 
-  it("borda: 30 dias antes ainda cabe 2x; 29 dias depois já não", () => {
-    // 2ª parcela vence exatamente na véspera do acampamento.
-    expect(maxInstallmentsForDate(em("2026-08-25"), CAMP)).toBe(2);
-    // Um dia a mais e a 2ª cairia em 26/09 — tarde demais.
-    expect(maxInstallmentsForDate(em("2026-08-27"), CAMP)).toBe(1);
+  it("CORTE DO PARCELAMENTO: 25/08 é o último dia; 26/08 já é só à vista", () => {
+    // Regra do produto: quem se inscreve até 25/08 ainda parcela em 2x (a 2ª
+    // vence 24/09, ANTES do acampamento). De 26/08 em diante, à vista apenas —
+    // senão a 2ª parcela cairia no dia do evento ou depois, e o dinheiro não
+    // chega a tempo.
+    //
+    // Este corte é EMERGENTE (sai de 30 dias de intervalo + data do evento),
+    // não uma constante. Se alguém mudar INSTALLMENT_INTERVAL_DAYS ou CAMP_START,
+    // ele se move em silêncio — por isso as bordas estão travadas aqui, hora a
+    // hora.
+    const emHora = (iso: string, hora: string) => new Date(`${iso}T${hora}-03:00`);
+
+    // Último instante do dia 25 ainda parcela.
+    expect(maxInstallmentsForDate(emHora("2026-08-25", "00:01:00"), CAMP)).toBe(2);
+    expect(maxInstallmentsForDate(emHora("2026-08-25", "23:59:00"), CAMP)).toBe(2);
+
+    // Primeiro instante do dia 26 já não parcela.
+    expect(maxInstallmentsForDate(emHora("2026-08-26", "00:01:00"), CAMP)).toBe(1);
+    expect(maxInstallmentsForDate(emHora("2026-08-26", "12:00:00"), CAMP)).toBe(1);
+    expect(maxInstallmentsForDate(emHora("2026-08-27", "12:00:00"), CAMP)).toBe(1);
+  });
+
+  it("a 2ª parcela de quem se inscreve em 25/08 vence ANTES do acampamento", () => {
+    // O ponto da regra não é a data do corte em si — é o dinheiro chegar antes.
+    const inscricao = new Date("2026-08-25T23:59:00-03:00");
+    expect(maxInstallmentsForDate(inscricao, CAMP)).toBe(2);
+    const vencimento2a = installmentDueDates(inscricao, 2)[1];
+    expect(vencimento2a.getTime()).toBeLessThan(CAMP.getTime());
   });
 
   it("carneDisponivelEm acompanha o teto", () => {
