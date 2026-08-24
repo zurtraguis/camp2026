@@ -53,7 +53,13 @@ export default async function TribosPage() {
   for (const lista of membrosPorTribo.values()) {
     lista.sort((a, b) => a.fullName.localeCompare(b.fullName, "pt-BR"));
   }
-  const semTribo = registrations.filter((r) => !r.tribo);
+  // Sem tribo, ou com uma tribo que não existe mais (ex.: PISTIS, enquanto o
+  // enum do banco ainda a aceita). Os cards só mostram as tribos vigentes, então
+  // sem este aviso essas inscrições sumiriam da tela — e das contas — caladas.
+  const TRIBOS_VIGENTES = new Set<string>(TRIBOS);
+  const foraDasTribos = registrations.filter(
+    (r) => !r.tribo || !TRIBOS_VIGENTES.has(r.tribo),
+  );
 
   // Quality thresholds
   const genderOk = report.genderSpread <= 1;
@@ -168,12 +174,15 @@ export default async function TribosPage() {
         })}
       </div>
 
-      {semTribo.length > 0 && (
-        <Callout tone="warning" title="Campistas sem tribo">
+      {foraDasTribos.length > 0 && (
+        <Callout tone="warning" title="Campistas fora das tribos vigentes">
           <p>
-            {semTribo.length} inscrição(ões) sem tribo atribuída:{" "}
-            {semTribo.map((r) => r.fullName).join(", ")}. Rode o rebalanceamento
-            para incluí-las.
+            {foraDasTribos.length} inscrição(ões) sem tribo ou numa tribo que não
+            existe mais — elas não aparecem nos cards acima nem entram nas contas:{" "}
+            {foraDasTribos
+              .map((r) => `${r.fullName}${r.tribo ? ` (${r.tribo})` : ""}`)
+              .join(", ")}
+            . Rode o rebalanceamento para trazê-las de volta.
           </p>
         </Callout>
       )}
