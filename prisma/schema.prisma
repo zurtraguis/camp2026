@@ -84,11 +84,11 @@ model StripeEvent {
 // Domínio — Acampamento RAIZ 2026
 // ─────────────────────────────────────────────────────────────────────────────
 
-// As 4 tribos reveladas no sábado (Gálatas 5.22-23).
+// As 3 tribos reveladas no sábado (Gálatas 5.22-23).
+// Pistis saiu em ago/2026 — ver migration `20260824_tribos_tres`.
 enum Tribo {
   AGAPE // amor
   EIRENE // paz
-  PISTIS // fidelidade
   CHARA // alegria
 }
 

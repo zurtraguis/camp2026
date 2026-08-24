@@ -3,7 +3,7 @@
 > "Todo fruto revela uma raiz."
 
 Sistema de design do site de inscrição do Acampamento RAIZ 2026 (adolescentes 12–19,
-4 tribos de Gálatas 5.22-23). Tema **dark/terroso**, alto contraste, WCAG 2.1 AA.
+3 tribos de Gálatas 5.22-23). Tema **dark/terroso**, alto contraste, WCAG 2.1 AA.
 
 Fonte da verdade do código: [`src/app/globals.css`](../src/app/globals.css) e
 [`src/components/ui/index.tsx`](../src/components/ui/index.tsx). Este documento descreve o
@@ -40,7 +40,7 @@ vocabulário eclesiástico genérico fora de contexto.
 | `muted` | `#b7b0a0` | texto secundário | 9.1:1 ✅ |
 | `verde-limao` | `#c8ff50` | **hero** · foco · success · botão · Ágape | 16.8:1 ✅ |
 | `verde-folha` | `#a8b92b` | Eirene | 9.0:1 ✅ |
-| `amarelo-sol` | `#ffd533` | Pistis · warning | 13.9:1 ✅ |
+| `amarelo-sol` | `#ffd533` | warning | 13.9:1 ✅ |
 | `marrom-raiz` | `#4b3a2a` | Chara (badge usa `#9c6b2e`) | ⚠️ ver §6 |
 | `danger` | `#ff6b5e` | erro | 7.0:1 ✅ |
 | `info` *(novo)* | `#7fb2ff` | AWAITING_REVIEW | — |
@@ -90,7 +90,7 @@ Primitivos em [`src/components/ui/index.tsx`](../src/components/ui/index.tsx).
 
 ## 6. Padrões de domínio
 
-- **Badge de tribo**: Ágape=`verde-limao` · Eirene=`verde-folha` · Pistis=`amarelo-sol` · Chara=`#9c6b2e`+texto claro. ⚠️ Chara dá 3.8:1 — usar **Oswald uppercase bold (≥14px)** ou clarear o fundo p/ `#b07d3a`.
+- **Badge de tribo**: Ágape=`verde-limao` · Eirene=`verde-folha` · Chara=`#9c6b2e`+texto claro. ⚠️ Chara dá 3.8:1 — usar **Oswald uppercase bold (≥14px)** ou clarear o fundo p/ `#b07d3a`.
 - **Card de lote**: preço sobe por lote (1º R$300, 2º R$400, 3º R$450). Estados: aberto (borda lima) · esgotado (opacity + CTA disabled, `aria-disabled`) · em breve.
 - **Seletor de pagamento**: radio group (`fieldset`+`legend`) — Cartão (Stripe) / Pix manual.
 - **Painel Pix**: QR com `alt`, "Copiar código" (feedback `aria-live`), upload de comprovante (label visível + hint de formato).

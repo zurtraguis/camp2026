@@ -16,14 +16,6 @@ const tribos = [
     icon: "M12 3c2.8 2 5 4.7 5 8.5 0 5-5 8.5-5 8.5s-5-3.5-5-8.5C7 7.7 9.2 5 12 3z M12 9v11 M8.5 13.5h7",
   },
   {
-    nome: "Pistis",
-    significado: "Fidelidade",
-    descricao:
-      "Fé que se mantém mesmo quando o solo está seco. A raiz que segura quando o vento força.",
-    cor: "#FFD533",
-    icon: "M12 3l7 4v5c0 4-3 7-7 9-4-2-7-5-7-9V7z M9 12h6 M12 9v6",
-  },
-  {
     nome: "Chara",
     significado: "Alegria",
     descricao:
@@ -47,7 +39,7 @@ export function TribosSection() {
             id="tribos-heading"
             className="stone-title mt-3 font-display text-6xl leading-none sm:text-8xl"
           >
-            As <span className="brush-accent">4</span> tribos
+            As <span className="brush-accent">3</span> tribos
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-creme/78">
             Baseadas nos frutos do Espírito de Gálatas 5.22-23. Cada tribo
@@ -55,7 +47,8 @@ export function TribosSection() {
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        {/* 3 cards: uma linha só a partir de md — sem card órfão numa 2ª linha. */}
+        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
           {tribos.map((t) => (
             <article
               key={t.nome}

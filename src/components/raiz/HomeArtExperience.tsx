@@ -51,7 +51,7 @@ const artSections: ArtSection[] = [
   {
     id: "tribos",
     src: "/raiz-art/home-tribos.webp",
-    alt: "Arte da seção das quatro tribos",
+    alt: "Arte da seção das tribos",
     ratio: "aspect-[16/9]",
     correction: true,
   },

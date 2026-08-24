@@ -24,7 +24,7 @@ const etapas = [
     numero: "04",
     titulo: "Descubra sua tribo",
     descricao:
-      "Perto do acampamento você saberá qual é a sua tribo: Ágape, Eirene, Pistis ou Chara.",
+      "Perto do acampamento você saberá qual é a sua tribo: Ágape, Eirene ou Chara.",
     icon: "M12 3c4 3 6 6 6 10a6 6 0 0 1-12 0c0-4 2-7 6-10z M12 9v8 M8.5 13.5h7",
   },
 ] as const;

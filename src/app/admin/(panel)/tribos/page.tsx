@@ -41,7 +41,7 @@ export default async function TribosPage() {
       <div>
         <h1 className="font-display text-3xl text-creme">Tribos</h1>
         <p className="mt-1 text-sm text-muted">
-          Distribuição atual dos campistas nas 4 tribos
+          Distribuição atual dos campistas nas 3 tribos
         </p>
       </div>
 
@@ -52,7 +52,7 @@ export default async function TribosPage() {
       )}
 
       {/* Tribo cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {TRIBOS.map((triboId) => {
           const meta = TRIBO_META[triboId];
           const stats = report.perTribo[triboId];
