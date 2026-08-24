@@ -34,3 +34,6 @@ Thumbs.db
 
 # Mockups de design locais (PNGs pesados, não usados pelo app)
 site/
+
+# Relatórios e backups gerados localmente — contêm nomes de campistas (LGPD).
+relatorios/

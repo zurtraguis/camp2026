@@ -1,7 +1,7 @@
 # Acampamento RAIZ 2026 — Site de Inscrições
 
 Site de inscrição de adolescentes (12–19 anos) para o Acampamento RAIZ 2026,
-com atribuição automática e balanceada das 4 tribos, pagamento por cartão
+com atribuição automática e balanceada das 3 tribos, pagamento por cartão
 (Stripe) ou Pix (com comprovante), consentimento parental conforme a LGPD e
 painel administrativo.
 
@@ -96,7 +96,7 @@ R$450 (80). A lógica pura é `resolveActiveLote(lotes, vendidos)` em
 
 ## 5. Balanceamento das tribos
 
-Tribos: **Ágape, Eirene, Pistis, Chara** (Gálatas 5.22-23).
+Tribos: **Ágape, Eirene, Chara** (Gálatas 5.22-23).
 
 - **Online (a cada inscrição):** *stratified greedy least-loaded* — estrato =
   gênero × faixa etária; o novo campista vai para a tribo com menos membros do

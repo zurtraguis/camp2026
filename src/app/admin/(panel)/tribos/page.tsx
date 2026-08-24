@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { TRIBOS, TRIBO_META, balanceReport, type TriboId, type Gender } from "@/lib/tribos";
+import Link from "next/link";
 import { Card, Callout } from "@/components/ui";
 import { RebalanceForm } from "./RebalanceForm";
 
@@ -9,12 +10,21 @@ export const metadata = { title: "Tribos" };
 export default async function TribosPage() {
   await requireAdmin();
 
-  type RegRow = { id: string; gender: string; ageAtCamp: number; tribo: string | null };
+  type RegRow = {
+    id: string;
+    fullName: string;
+    status: string;
+    gender: string;
+    ageAtCamp: number;
+    tribo: string | null;
+  };
 
   const registrations = (await db.registration.findMany({
     where: { status: { not: "CANCELLED" } },
     select: {
       id: true,
+      fullName: true,
+      status: true,
       gender: true,
       ageAtCamp: true,
       tribo: true,
@@ -32,6 +42,19 @@ export default async function TribosPage() {
 
   const report = balanceReport(campers);
 
+  // Lista nominal por tribo — é o que serve na hora de chamar a galera.
+  // Ordem alfabética em pt-BR (acentos no lugar certo).
+  const membrosPorTribo = new Map<TriboId, RegRow[]>(
+    TRIBOS.map((t) => [t, [] as RegRow[]]),
+  );
+  for (const r of registrations) {
+    if (r.tribo) membrosPorTribo.get(r.tribo as TriboId)?.push(r);
+  }
+  for (const lista of membrosPorTribo.values()) {
+    lista.sort((a, b) => a.fullName.localeCompare(b.fullName, "pt-BR"));
+  }
+  const semTribo = registrations.filter((r) => !r.tribo);
+
   // Quality thresholds
   const genderOk = report.genderSpread <= 1;
   const ageOk = report.ageSpread <= 0.5;
@@ -41,7 +64,7 @@ export default async function TribosPage() {
       <div>
         <h1 className="font-display text-3xl text-creme">Tribos</h1>
         <p className="mt-1 text-sm text-muted">
-          Distribuição atual dos campistas nas 4 tribos
+          Distribuição atual dos campistas nas 3 tribos
         </p>
       </div>
 
@@ -52,10 +75,11 @@ export default async function TribosPage() {
       )}
 
       {/* Tribo cards */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {TRIBOS.map((triboId) => {
           const meta = TRIBO_META[triboId];
           const stats = report.perTribo[triboId];
+          const membros = membrosPorTribo.get(triboId) ?? [];
           return (
             <Card key={triboId} className="relative overflow-hidden">
               {/* Color accent bar */}
@@ -99,11 +123,60 @@ export default async function TribosPage() {
                     </dd>
                   </div>
                 </dl>
+
+                {/* Quem é quem: a contagem não serve para chamar ninguém. */}
+                <div className="border-t border-border pt-3">
+                  <h3 className="font-condensed text-xs uppercase tracking-wide text-muted">
+                    Campistas
+                  </h3>
+                  {membros.length === 0 ? (
+                    <p className="mt-2 text-sm text-muted">Nenhum ainda.</p>
+                  ) : (
+                    <ol className="mt-2 space-y-1">
+                      {membros.map((m, i) => (
+                        <li key={m.id} className="flex items-baseline gap-2 text-sm">
+                          <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted">
+                            {i + 1}.
+                          </span>
+                          <Link
+                            href={`/admin/inscricao/${m.id}`}
+                            className="flex-1 rounded text-creme underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-verde-limao"
+                          >
+                            {m.fullName}
+                          </Link>
+                          <span className="shrink-0 text-xs tabular-nums text-muted">
+                            {m.gender === "MALE" ? "M" : "F"} · {m.ageAtCamp}
+                          </span>
+                          {m.status !== "CONFIRMED" && (
+                            // Quem ainda não pagou continua na tribo (a vaga é
+                            // dele), mas na hora de fechar a lista isso importa.
+                            <span
+                              className="shrink-0 rounded-sm bg-amarelo-sol/15 px-1 text-[10px] font-semibold uppercase text-amarelo-sol"
+                              title="Pagamento ainda não confirmado"
+                            >
+                              pend.
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
               </div>
             </Card>
           );
         })}
       </div>
+
+      {semTribo.length > 0 && (
+        <Callout tone="warning" title="Campistas sem tribo">
+          <p>
+            {semTribo.length} inscrição(ões) sem tribo atribuída:{" "}
+            {semTribo.map((r) => r.fullName).join(", ")}. Rode o rebalanceamento
+            para incluí-las.
+          </p>
+        </Callout>
+      )}
 
       {/* Quality metrics */}
       <section aria-label="Métricas de balanceamento">

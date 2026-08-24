@@ -7,12 +7,16 @@
  *    menos membros do MESMO estrato; empate → menos membros no total → menor
  *    índice. Garante paridade de gênero e baixa variância de idade, O(1) amortizado.
  *  - Offline (re-balanceamento pelo admin): "snake draft" por gênero, ordenado
- *    por idade desc., distribuindo em serpentina nas 4 tribos.
+ *    por idade desc., distribuindo em serpentina entre as tribos.
  *
  * Sem dependência externa — ~lógica pura, totalmente testável.
+ *
+ * Os dois algoritmos derivam a quantidade de tribos de TRIBOS.length — mudar a
+ * lista abaixo (como em ago/2026, quando Pistis saiu e o acampamento passou de
+ * 4 para 3 tribos) rebalanceia tudo sem tocar na lógica.
  */
 
-export const TRIBOS = ["AGAPE", "EIRENE", "PISTIS", "CHARA"] as const;
+export const TRIBOS = ["AGAPE", "EIRENE", "CHARA"] as const;
 export type TriboId = (typeof TRIBOS)[number];
 
 export type Gender = "MALE" | "FEMALE";
@@ -28,7 +32,6 @@ export interface TriboMeta {
 export const TRIBO_META: Record<TriboId, TriboMeta> = {
   AGAPE: { id: "AGAPE", nome: "Ágape", significado: "amor", cor: "#C8FF50" },
   EIRENE: { id: "EIRENE", nome: "Eirene", significado: "paz", cor: "#A8B92B" },
-  PISTIS: { id: "PISTIS", nome: "Pistis", significado: "fidelidade", cor: "#FFD533" },
   CHARA: { id: "CHARA", nome: "Chara", significado: "alegria", cor: "#9C6B2E" },
 };
 
@@ -133,6 +136,35 @@ export function rebalance(campers: Camper[]): Record<string, TriboId> {
     });
   }
   return result;
+}
+
+/**
+ * Monta UM único UPDATE que grava o mapa `id → tribo` de uma vez.
+ *
+ * Por que não um update por campista dentro de uma transação: com algumas
+ * dezenas de inscritos são dezenas de idas e voltas ao banco, e a transação
+ * estoura o timeout de 5s do Prisma (P2028) — o rebalanceamento falhava
+ * inteiro. Um `update ... from (values ...)` é uma viagem só e já é atômico
+ * por ser uma instrução única.
+ *
+ * `tribo` é gravada como texto com cast explícito para o enum: durante uma
+ * troca de tribos o enum do banco pode ainda ter valores que o código não tem.
+ */
+export function buildTriboUpdate(map: Record<string, TriboId>): {
+  sql: string;
+  params: string[];
+} {
+  const entries = Object.entries(map);
+  if (entries.length === 0) throw new Error("Nada a atualizar.");
+  const values = entries
+    .map((_, i) => `($${i * 2 + 1}, $${i * 2 + 2})`)
+    .join(", ");
+  return {
+    sql:
+      `update "Registration" as r set tribo = v.tribo::"Tribo" ` +
+      `from (values ${values}) as v(id, tribo) where r.id = v.id`,
+    params: entries.flatMap(([id, tribo]) => [id, tribo as string]),
+  };
 }
 
 /** Métrica de qualidade do balanceamento (para o painel admin). */

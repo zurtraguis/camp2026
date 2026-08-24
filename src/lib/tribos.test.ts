@@ -5,6 +5,7 @@ import {
   applyAssignment,
   emptyCounts,
   rebalance,
+  buildTriboUpdate,
   balanceReport,
   ageBucket,
   type Camper,
@@ -22,23 +23,35 @@ describe("ageBucket", () => {
   });
 });
 
+describe("as tribos vigentes", () => {
+  it("são exatamente Ágape, Eirene e Chara", () => {
+    // Pistis saiu em ago/2026. Este teste é o alarme: mexer na lista muda
+    // silenciosamente TODO o balanceamento (online e offline), porque os dois
+    // algoritmos derivam a quantidade de tribos de TRIBOS.length.
+    expect([...TRIBOS]).toEqual(["AGAPE", "EIRENE", "CHARA"]);
+  });
+});
+
 describe("chooseTribo (online)", () => {
-  it("distribui os 4 primeiros do mesmo estrato em tribos distintas", () => {
+  it("distribui os primeiros campistas do mesmo estrato em tribos distintas", () => {
     const counts = emptyCounts();
     const chosen: TriboId[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < TRIBOS.length; i++) {
       const t = chooseTribo("MALE", 15, counts);
       applyAssignment(t, "MALE", 15, counts);
       chosen.push(t);
     }
-    expect(new Set(chosen).size).toBe(4); // uma em cada tribo
+    expect(new Set(chosen).size).toBe(TRIBOS.length); // uma em cada tribo
   });
 
   it("mantém paridade de gênero e idade ao longo de muitas inscrições", () => {
     const counts = emptyCounts();
     const campers: (Camper & { tribo: TriboId })[] = [];
-    // 80 meninos e 80 meninas, idades 12..19 ciclando
-    for (let i = 0; i < 160; i++) {
+    // Metade meninos, metade meninas, idades 12..19 ciclando. O total sai de
+    // TRIBOS.length para o teste não travar num número de tribos.
+    const POR_TRIBO = 40;
+    const TOTAL = TRIBOS.length * POR_TRIBO;
+    for (let i = 0; i < TOTAL; i++) {
       const gender = i % 2 === 0 ? "MALE" : "FEMALE";
       const age = 12 + (i % 8);
       const tribo = chooseTribo(gender, age, counts);
@@ -46,8 +59,7 @@ describe("chooseTribo (online)", () => {
       campers.push({ id: `c${i}`, gender, age, tribo });
     }
     const rep = balanceReport(campers);
-    // 160 / 4 = 40 por tribo
-    for (const t of TRIBOS) expect(rep.perTribo[t].total).toBe(40);
+    for (const t of TRIBOS) expect(rep.perTribo[t].total).toBe(POR_TRIBO);
     expect(rep.genderSpread).toBeLessThanOrEqual(1);
     expect(rep.ageSpread).toBeLessThanOrEqual(0.5);
   });
@@ -70,21 +82,39 @@ describe("chooseTribo (online)", () => {
 });
 
 describe("rebalance (offline snake draft)", () => {
-  it("equilibra gênero e idade entre as 4 tribos", () => {
+  it("equilibra gênero e idade entre as tribos vigentes", () => {
+    const POR_TRIBO = 12;
+    const TOTAL = TRIBOS.length * POR_TRIBO;
     const campers: Camper[] = [];
-    for (let i = 0; i < 48; i++) {
+    for (let i = 0; i < TOTAL; i++) {
       campers.push({
         id: `id${i}`,
-        gender: i < 24 ? "MALE" : "FEMALE",
+        gender: i < TOTAL / 2 ? "MALE" : "FEMALE",
         age: 12 + (i % 8),
       });
     }
     const map = rebalance(campers);
     const withTribo = campers.map((c) => ({ ...c, tribo: map[c.id] }));
     const rep = balanceReport(withTribo);
-    for (const t of TRIBOS) expect(rep.perTribo[t].total).toBe(12);
+    for (const t of TRIBOS) expect(rep.perTribo[t].total).toBe(POR_TRIBO);
     expect(rep.genderSpread).toBeLessThanOrEqual(1);
     expect(rep.ageSpread).toBeLessThanOrEqual(0.5);
+  });
+
+  it("grava tudo num único UPDATE, com os ids e tribos como parâmetros", () => {
+    // Um update por campista dentro de uma transação estourava o timeout de 5s
+    // do Prisma (P2028) e o rebalanceamento inteiro falhava. Aqui garantimos
+    // que continua sendo UMA instrução — e que nada entra por concatenação.
+    const { sql, params } = buildTriboUpdate({ a: "AGAPE", b: "CHARA" });
+    expect(sql).toContain('update "Registration"');
+    expect(sql).toContain("($1, $2), ($3, $4)");
+    expect(sql).not.toContain("AGAPE"); // valores vão parametrizados
+    expect(params).toEqual(["a", "AGAPE", "b", "CHARA"]);
+    expect(sql.split(";").length).toBe(1);
+  });
+
+  it("recusa mapa vazio em vez de montar SQL inválido", () => {
+    expect(() => buildTriboUpdate({})).toThrow();
   });
 
   it("é estável/determinístico", () => {

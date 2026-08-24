@@ -42,7 +42,7 @@ import {
   removerPagamentoDespesa,
   removerDespesa,
 } from "@/lib/custos.service";
-import { rebalance, type Camper, type Gender } from "@/lib/tribos";
+import { rebalance, buildTriboUpdate, type Camper, type Gender } from "@/lib/tribos";
 
 export interface LoginState {
   ok: boolean;
@@ -567,10 +567,10 @@ export async function rebalanceAction(): Promise<void> {
     age: r.ageAtCamp,
   }));
   const map = rebalance(campers);
-  await db.$transaction(
-    Object.entries(map).map(([id, tribo]) =>
-      db.registration.update({ where: { id }, data: { tribo } }),
-    ),
-  );
+  if (Object.keys(map).length === 0) return;
+  // Um único UPDATE: dezenas de updates numa transação estouram o timeout de
+  // 5s do Prisma e o rebalanceamento falhava inteiro. Ver buildTriboUpdate.
+  const { sql, params } = buildTriboUpdate(map);
+  await db.$executeRawUnsafe(sql, ...params);
   revalidatePath("/admin/tribos");
 }
