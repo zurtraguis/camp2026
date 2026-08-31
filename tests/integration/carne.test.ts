@@ -13,7 +13,9 @@ import {
   seedAdmin,
   inscricaoValida,
   precoVigente,
-  parcelasPossiveisHoje,
+  PARCELAS_NO_TESTE,
+  congelarEmDataComCarne,
+  descongelarRelogio,
 } from "./helpers";
 import { createRegistration } from "@/lib/registration.service";
 import { reviewInstallment, reviewPixPayment } from "@/lib/payment.service";
@@ -21,16 +23,22 @@ import { reviewInstallment, reviewPixPayment } from "@/lib/payment.service";
 let adminId: string;
 
 beforeAll(async () => {
+  // Sem congelar, de 26/08/2026 em diante não existe mais carnê e este arquivo
+  // inteiro passa a criar inscrições à vista.
+  congelarEmDataComCarne();
   await seedLotes();
   adminId = await seedAdmin();
 });
 beforeEach(resetDb);
-afterAll(() => db.$disconnect());
+afterAll(async () => {
+  descongelarRelogio();
+  await db.$disconnect();
+});
 
 /** Cria uma inscrição de carnê e devolve as parcelas ordenadas. */
-// Quantas parcelas cabem HOJE: o teto encolhe conforme o acampamento se
-// aproxima, então chumbar 3 quebraria a suíte com o passar do tempo.
-const N = parcelasPossiveisHoje();
+// Quantas parcelas cabem na data de teste (ver DATA_COM_CARNE): o teto
+// encolhe conforme o acampamento se aproxima, e chumbar 3 quebraria a suíte.
+const N = PARCELAS_NO_TESTE;
 
 async function criarCarne(parcelas = N) {
   const criada = await createRegistration(

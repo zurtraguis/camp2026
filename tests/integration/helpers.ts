@@ -5,6 +5,7 @@
  * Estes testes APAGAM todas as tabelas entre casos — apontar para produção por
  * engano destruiria as inscrições reais.
  */
+import { vi } from "vitest";
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import type { RegistrationInput } from "@/lib/validation";
@@ -126,7 +127,33 @@ export async function precoVigente(): Promise<number> {
   return lote.priceCents;
 }
 
-/** Parcelas de carnê possíveis hoje (0 se o parcelamento já fechou). */
-export function parcelasPossiveisHoje(): number {
-  return maxInstallmentsForDate(new Date());
+/**
+ * Data fixa em que o carnê AINDA existe, para os testes que precisam de um.
+ *
+ * O parcelamento encolhe sozinho até acabar — a última parcela tem de vencer
+ * antes do acampamento, então de 26/08/2026 em diante não há mais carnê
+ * nenhum. Sem congelar o relógio, toda a suíte de carnê passa a criar
+ * inscrições à vista e falha em bloco num dia qualquer, sem ninguém ter
+ * tocado no código. Foi o que aconteceu em 31/08/2026.
+ *
+ * Derivar de `new Date()` não resolvia: derivava para 1x, que não é carnê.
+ * O que estes testes querem é um cenário com carnê, não "o que der hoje".
+ */
+export const DATA_COM_CARNE = new Date("2026-06-01T12:00:00-03:00");
+
+/** Parcelas de carnê disponíveis na data de teste (hoje seria 1 = à vista). */
+export const PARCELAS_NO_TESTE = maxInstallmentsForDate(DATA_COM_CARNE);
+
+/**
+ * Congela o relógio em DATA_COM_CARNE. Só o `Date` é falsificado: com timers
+ * falsos de verdade o driver do Postgres trava esperando um timeout que nunca
+ * dispara.
+ */
+export function congelarEmDataComCarne(): void {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(DATA_COM_CARNE);
+}
+
+export function descongelarRelogio(): void {
+  vi.useRealTimers();
 }

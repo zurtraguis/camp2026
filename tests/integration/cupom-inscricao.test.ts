@@ -10,7 +10,9 @@ import {
   seedAdmin,
   inscricaoValida,
   precoVigente,
-  parcelasPossiveisHoje,
+  PARCELAS_NO_TESTE,
+  congelarEmDataComCarne,
+  descongelarRelogio,
 } from "./helpers";
 import {
   createRegistration,
@@ -20,9 +22,15 @@ import { aplicarCupomRetroativo, editCoupon } from "@/lib/coupon.service";
 import { applyPercentOff } from "@/lib/coupon";
 import { baixaManualPagamento } from "@/lib/payment.service";
 
-beforeAll(seedLotes);
+beforeAll(async () => {
+  congelarEmDataComCarne(); // os casos de carnê precisam de parcelamento vivo
+  await seedLotes();
+});
 beforeEach(resetDb);
-afterAll(() => db.$disconnect());
+afterAll(async () => {
+  descongelarRelogio();
+  await db.$disconnect();
+});
 
 async function criarCupom(over: Record<string, unknown> = {}) {
   return db.coupon.create({
@@ -60,7 +68,7 @@ describe("cupom aplicado na inscrição", () => {
   it("desconto vale também nas parcelas do carnê", async () => {
     await criarCupom({ percentOff: 10 });
     const criada = await createRegistration(
-      inscricaoValida({ couponCode: "RAIZ10", installments: parcelasPossiveisHoje() }),
+      inscricaoValida({ couponCode: "RAIZ10", installments: PARCELAS_NO_TESTE }),
     );
     const pg = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
@@ -147,7 +155,7 @@ describe("criação de inscrição", () => {
 
   it("exclusão leva junto responsável, saúde, consentimento e pagamento", async () => {
     const criada = await createRegistration(
-      inscricaoValida({ installments: parcelasPossiveisHoje() }),
+      inscricaoValida({ installments: PARCELAS_NO_TESTE }),
     );
     await deleteRegistration(criada.id);
 
@@ -195,7 +203,7 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
 
   it("carnê: redivide as parcelas e a soma fecha com o novo total", async () => {
     await criarCupom({ percentOff: 10 });
-    const criada = await createRegistration(inscricaoValida({ installments: parcelasPossiveisHoje() }));
+    const criada = await createRegistration(inscricaoValida({ installments: PARCELAS_NO_TESTE }));
     const pg0 = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
       include: { installments: true },
