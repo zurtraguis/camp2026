@@ -3,6 +3,7 @@ import {
   normalizeCouponCode,
   discountCents,
   applyPercentOff,
+  nadaAPagar,
   couponUsable,
   isValidPercent,
   bloqueioCupomRetroativo,
@@ -14,6 +15,26 @@ describe("normalizeCouponCode", () => {
   it("maiúsculas e trim", () => {
     expect(normalizeCouponCode("  raiz10 ")).toBe("RAIZ10");
     expect(normalizeCouponCode("Igreja")).toBe("IGREJA");
+  });
+});
+
+describe("nadaAPagar", () => {
+  it("cupom de 100% zera e a inscrição não fica devendo nada", () => {
+    // O caso real (Johana, cupom BOLSA): o valor zerou, mas a inscrição ficou
+    // "aguardando pagamento" — sem chave Pix que fizesse sentido e sem
+    // comprovante que a família pudesse enviar. Zero não é dívida de zero.
+    expect(nadaAPagar(applyPercentOff(40000, 100))).toBe(true);
+  });
+
+  it("qualquer centavo restante ainda é cobrança", () => {
+    expect(nadaAPagar(1)).toBe(false);
+    expect(nadaAPagar(applyPercentOff(40000, 99))).toBe(false);
+  });
+
+  it("valor negativo (não deveria acontecer) também é 'nada a pagar'", () => {
+    // Defensivo: se algum cálculo escorregar para negativo, o certo é tratar
+    // como quitado — nunca cobrar um valor negativo da família.
+    expect(nadaAPagar(-100)).toBe(true);
   });
 });
 

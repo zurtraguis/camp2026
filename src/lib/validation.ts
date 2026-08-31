@@ -164,6 +164,23 @@ export const couponEditSchema = couponSchema.omit({ code: true }).extend({
 
 export type CouponEditInput = z.infer<typeof couponEditSchema>;
 
+/* ── Observação interna da inscrição ─────────────────────────────────────── */
+
+/**
+ * Anotação livre da organização. Vazio é válido: apagar a observação é uma
+ * operação legítima, e vira null no banco (nada de string vazia pendurada).
+ */
+export const observacaoSchema = z.object({
+  registrationId: z.string().min(1),
+  adminNotes: z
+    .string()
+    .max(2000, "A observação ficou longa demais (máx. 2000 caracteres).")
+    .transform((v) => {
+      const t = v.trim();
+      return t.length === 0 ? null : t;
+    }),
+});
+
 /* ── Custos do acampamento ───────────────────────────────────────────────── */
 
 /** "1.234,56" ou "1234.56" → centavos. Aceita o que o organizador digita. */

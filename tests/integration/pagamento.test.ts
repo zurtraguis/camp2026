@@ -9,7 +9,9 @@ import {
   seedLotes,
   seedAdmin,
   inscricaoValida,
-  parcelasPossiveisHoje,
+  PARCELAS_NO_TESTE,
+  congelarEmDataComCarne,
+  descongelarRelogio,
 } from "./helpers";
 import { createRegistration } from "@/lib/registration.service";
 import {
@@ -24,11 +26,15 @@ import {
 let adminId: string;
 
 beforeAll(async () => {
+  congelarEmDataComCarne(); // os casos de carnê precisam de parcelamento vivo
   await seedLotes();
   adminId = await seedAdmin();
 });
 beforeEach(resetDb);
-afterAll(() => db.$disconnect());
+afterAll(async () => {
+  descongelarRelogio();
+  await db.$disconnect();
+});
 
 async function criar(over: Parameters<typeof inscricaoValida>[0] = {}) {
   const criada = await createRegistration(inscricaoValida(over));
@@ -105,14 +111,14 @@ describe("baixa manual", () => {
   });
 
   it("carnê: baixa do pagamento inteiro é bloqueada", async () => {
-    const { payment } = await criar({ installments: parcelasPossiveisHoje() });
+    const { payment } = await criar({ installments: PARCELAS_NO_TESTE });
     await expect(
       baixaManualPagamento(payment.id, adminId, "DINHEIRO"),
     ).rejects.toThrow(/parcela a parcela/i);
   });
 
   it("carnê: baixa por parcela funciona mesmo sem comprovante (dinheiro)", async () => {
-    const { registrationId, payment } = await criar({ installments: parcelasPossiveisHoje() });
+    const { registrationId, payment } = await criar({ installments: PARCELAS_NO_TESTE });
     const p1 = payment.installments[0];
     expect(p1.status).toBe("PENDING"); // nunca passou pela fila de revisão
 

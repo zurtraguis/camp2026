@@ -21,6 +21,17 @@ export function applyPercentOff(priceCents: number, percentOff: number): number 
   return Math.max(0, priceCents - discountCents(priceCents, percentOff));
 }
 
+/**
+ * Não há o que cobrar. Acontece com cupom de 100% (bolsa): o valor final zera.
+ *
+ * Isso não é "pagamento pendente de R$0" — é inscrição resolvida. Sem esta
+ * regra a família fica olhando "aguardando pagamento" para sempre, sem chave
+ * Pix que faça sentido e sem comprovante que possa enviar.
+ */
+export function nadaAPagar(finalCents: number): boolean {
+  return finalCents <= 0;
+}
+
 export interface CouponLike {
   active: boolean;
   percentOff: number;

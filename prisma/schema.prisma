@@ -159,6 +159,10 @@ model Registration {
   status RegistrationStatus @default(PENDING_PAYMENT)
   isDemo Boolean            @default(false)
 
+  // Observação livre da organização sobre esta inscrição (bolsa combinada,
+  // pendência com a família, o que for). Interno: nunca sai para o campista.
+  adminNotes String?
+
   loteId String
   lote   Lote   @relation(fields: [loteId], references: [id])
 

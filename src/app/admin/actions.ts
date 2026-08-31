@@ -19,6 +19,7 @@ import {
   despesaSchema,
   despesaEditSchema,
   pagamentoDespesaSchema,
+  observacaoSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
@@ -288,13 +289,50 @@ export async function aplicarCupomAction(
     revalidatePath("/admin/em-aberto");
     return {
       ok: true,
-      message: `Cupom aplicado (−${r.percentOff}%): de ${formatBRL(r.antesCents)} para ${formatBRL(r.depoisCents)}.`,
+      message: r.gratuita
+        ? `Cupom aplicado (−${r.percentOff}%): de ${formatBRL(r.antesCents)} para ${formatBRL(r.depoisCents)}. Não sobrou nada a pagar — a inscrição já está confirmada.`
+        : `Cupom aplicado (−${r.percentOff}%): de ${formatBRL(r.antesCents)} para ${formatBRL(r.depoisCents)}.`,
     };
   } catch (err) {
     return {
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao aplicar o cupom.",
     };
+  }
+}
+
+/**
+ * Salva a observação interna da organização sobre uma inscrição. Texto vazio
+ * apaga a anotação (vira null) — apagar é uma decisão legítima, não um erro.
+ */
+export async function salvarObservacaoAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = observacaoSchema.safeParse({
+    registrationId: formData.get("registrationId"),
+    adminNotes: formData.get("adminNotes") ?? "",
+  });
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: parsed.error.issues[0]?.message ?? "Dados inválidos.",
+    };
+  }
+  try {
+    await db.registration.update({
+      where: { id: parsed.data.registrationId },
+      data: { adminNotes: parsed.data.adminNotes },
+    });
+    revalidatePath(`/admin/inscricao/${parsed.data.registrationId}`);
+    revalidatePath("/admin");
+    return {
+      ok: true,
+      message: parsed.data.adminNotes ? "Observação salva." : "Observação apagada.",
+    };
+  } catch {
+    return { ok: false, message: "Falha ao salvar a observação." };
   }
 }
 

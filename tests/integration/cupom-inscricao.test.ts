@@ -10,7 +10,9 @@ import {
   seedAdmin,
   inscricaoValida,
   precoVigente,
-  parcelasPossiveisHoje,
+  PARCELAS_NO_TESTE,
+  congelarEmDataComCarne,
+  descongelarRelogio,
 } from "./helpers";
 import {
   createRegistration,
@@ -20,9 +22,15 @@ import { aplicarCupomRetroativo, editCoupon } from "@/lib/coupon.service";
 import { applyPercentOff } from "@/lib/coupon";
 import { baixaManualPagamento } from "@/lib/payment.service";
 
-beforeAll(seedLotes);
+beforeAll(async () => {
+  congelarEmDataComCarne(); // os casos de carnê precisam de parcelamento vivo
+  await seedLotes();
+});
 beforeEach(resetDb);
-afterAll(() => db.$disconnect());
+afterAll(async () => {
+  descongelarRelogio();
+  await db.$disconnect();
+});
 
 async function criarCupom(over: Record<string, unknown> = {}) {
   return db.coupon.create({
@@ -60,7 +68,7 @@ describe("cupom aplicado na inscrição", () => {
   it("desconto vale também nas parcelas do carnê", async () => {
     await criarCupom({ percentOff: 10 });
     const criada = await createRegistration(
-      inscricaoValida({ couponCode: "RAIZ10", installments: parcelasPossiveisHoje() }),
+      inscricaoValida({ couponCode: "RAIZ10", installments: PARCELAS_NO_TESTE }),
     );
     const pg = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
@@ -147,7 +155,7 @@ describe("criação de inscrição", () => {
 
   it("exclusão leva junto responsável, saúde, consentimento e pagamento", async () => {
     const criada = await createRegistration(
-      inscricaoValida({ installments: parcelasPossiveisHoje() }),
+      inscricaoValida({ installments: PARCELAS_NO_TESTE }),
     );
     await deleteRegistration(criada.id);
 
@@ -181,7 +189,13 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     const r = await aplicarCupomRetroativo(antes.id, "raiz10", admin);
 
     const esperado = applyPercentOff(preco, 10);
-    expect(r).toEqual({ antesCents: preco, depoisCents: esperado, percentOff: 10 });
+    // gratuita:false — 10% não zera nada, então a inscrição segue devendo.
+    expect(r).toEqual({
+      antesCents: preco,
+      depoisCents: esperado,
+      percentOff: 10,
+      gratuita: false,
+    });
     const pg = await db.payment.findUniqueOrThrow({ where: { id: antes.id } });
     expect(pg.amountCents).toBe(esperado);
     expect(pg.originalAmountCents).toBe(preco);
@@ -193,9 +207,37 @@ describe("cupom retroativo — a mãe esqueceu de aplicar", () => {
     expect(cupom.uses).toBe(1); // consome o uso, como qualquer aplicação
   });
 
+  it("cupom de 100% aplicado depois CONFIRMA a inscrição — nada a pagar", async () => {
+    // O caso da Johana: o valor zerou, mas a inscrição continuava "aguardando
+    // pagamento" — sem chave Pix que fizesse sentido e sem comprovante que a
+    // família pudesse enviar. Zero não é dívida de zero.
+    await db.coupon.create({ data: { code: "BOLSA100", percentOff: 100 } });
+    const criada = await createRegistration(inscricaoValida());
+    const antes = await db.payment.findUniqueOrThrow({
+      where: { registrationId: criada.id },
+    });
+
+    const admin = await seedAdmin();
+    const r = await aplicarCupomRetroativo(antes.id, "BOLSA100", admin);
+    expect(r.depoisCents).toBe(0);
+    expect(r.gratuita).toBe(true);
+
+    const pg = await db.payment.findUniqueOrThrow({ where: { id: antes.id } });
+    expect(pg.status).toBe("CONFIRMED");
+    expect(pg.amountCents).toBe(0);
+    // Sem cobrança não existe chave Pix: manter o txid daria à família uma
+    // chave que ninguém deve pagar.
+    expect(pg.pixTxid).toBeNull();
+
+    const reg = await db.registration.findUniqueOrThrow({
+      where: { id: criada.id },
+    });
+    expect(reg.status).toBe("CONFIRMED");
+  });
+
   it("carnê: redivide as parcelas e a soma fecha com o novo total", async () => {
     await criarCupom({ percentOff: 10 });
-    const criada = await createRegistration(inscricaoValida({ installments: parcelasPossiveisHoje() }));
+    const criada = await createRegistration(inscricaoValida({ installments: PARCELAS_NO_TESTE }));
     const pg0 = await db.payment.findUniqueOrThrow({
       where: { registrationId: criada.id },
       include: { installments: true },
