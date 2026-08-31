@@ -11,6 +11,7 @@ import { Badge, ButtonLink, Card } from "@/components/ui";
 import { ReviewForm } from "@/app/admin/(panel)/em-aberto/ReviewForm";
 import { AplicarCupomForm } from "./AplicarCupomForm";
 import { DeleteRegistrationForm } from "./DeleteRegistrationForm";
+import { ObservacaoForm } from "./ObservacaoForm";
 import Link from "next/link";
 
 interface Props {
@@ -83,6 +84,7 @@ type FullRegistration = {
   city: string | null;
   tribo: string | null;
   status: string;
+  adminNotes: string | null;
   createdAt: Date;
   guardian: {
     name: string;
@@ -586,6 +588,23 @@ export default async function InscricaoDetailPage({ params }: Props) {
           </Card>
         </section>
       )}
+
+      {/* Observação interna da organização */}
+      <section aria-labelledby="obs-heading">
+        <Card>
+          <h2
+            id="obs-heading"
+            className="font-display text-xl text-creme mb-1"
+          >
+            Observação
+          </h2>
+          <p className="mb-4 text-sm text-muted">
+            Anotação da organização sobre esta inscrição — o que a equipe
+            precisar lembrar.
+          </p>
+          <ObservacaoForm registrationId={reg.id} atual={reg.adminNotes} />
+        </Card>
+      </section>
 
       {/* Back + excluir (zona de perigo, separada) */}
       <div className="flex flex-wrap items-start justify-between gap-4 border-t border-border pt-6">

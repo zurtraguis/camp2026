@@ -7,6 +7,7 @@ import {
   couponUsable,
   normalizeCouponCode,
   bloqueioCupomRetroativo,
+  nadaAPagar,
   COUPON_REASON_LABEL,
 } from "@/lib/coupon";
 import { splitInstallments } from "@/lib/carne";
@@ -195,7 +196,12 @@ export async function aplicarCupomRetroativo(
   paymentId: string,
   rawCode: string,
   adminId: string,
-): Promise<{ antesCents: number; depoisCents: number; percentOff: number }> {
+): Promise<{
+  antesCents: number;
+  depoisCents: number;
+  percentOff: number;
+  gratuita: boolean;
+}> {
   const code = normalizeCouponCode(rawCode);
   if (!code) throw new Error("Informe o código do cupom.");
 
@@ -215,6 +221,8 @@ export async function aplicarCupomRetroativo(
 
       const base = p.originalAmountCents ?? p.amountCents;
       const novo = applyPercentOff(base, cupom.percentOff);
+      // Cupom de 100%: não sobra nada a cobrar, então a inscrição fecha aqui.
+      const gratuita = nadaAPagar(novo);
 
       await tx.payment.update({
         where: { id: p.id },
@@ -224,11 +232,22 @@ export async function aplicarCupomRetroativo(
           couponId: cupom.couponId,
           couponCode: cupom.code,
           discountPercent: cupom.percentOff,
+          status: gratuita ? "CONFIRMED" : undefined,
+          pixTxid: gratuita ? null : undefined,
           reviewedById: adminId,
           reviewedAt: new Date(),
-          reviewNote: `Cupom ${cupom.code} (−${cupom.percentOff}%) aplicado pelo admin após a inscrição.`,
+          reviewNote: gratuita
+            ? `Cupom ${cupom.code} (−${cupom.percentOff}%) zerou o valor — inscrição confirmada, nada a pagar.`
+            : `Cupom ${cupom.code} (−${cupom.percentOff}%) aplicado pelo admin após a inscrição.`,
         },
       });
+
+      if (gratuita) {
+        await tx.registration.update({
+          where: { id: p.registrationId },
+          data: { status: "CONFIRMED" },
+        });
+      }
 
       // Carnê: redivide o novo total pelas parcelas (nenhuma está paga — o
       // guard garante), preservando os vencimentos já combinados.
@@ -237,12 +256,24 @@ export async function aplicarCupomRetroativo(
         for (let i = 0; i < p.installments.length; i++) {
           await tx.installment.update({
             where: { id: p.installments[i].id },
-            data: { amountCents: valores[i] },
+            data: {
+              amountCents: valores[i],
+              // Parcela de R$0 não é parcela em aberto: some da fila de
+              // cobrança em vez de virar uma dívida de zero real.
+              ...(gratuita
+                ? { status: "CONFIRMED" as const, reviewedAt: new Date() }
+                : {}),
+            },
           });
         }
       }
 
-      return { antesCents: p.amountCents, depoisCents: novo, percentOff: cupom.percentOff };
+      return {
+        antesCents: p.amountCents,
+        depoisCents: novo,
+        percentOff: cupom.percentOff,
+        gratuita,
+      };
     },
     { isolationLevel: "Serializable" },
   );

@@ -130,10 +130,12 @@ export async function createRegistrationAction(
 
   let registrationId: string;
   let publicCode: string;
+  let gratuita = false;
   try {
     const created = await createRegistration(parsed.data, { ip, userAgent });
     registrationId = created.id;
     publicCode = created.publicCode;
+    gratuita = created.gratuita;
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Erro ao criar a inscrição.";
@@ -143,7 +145,13 @@ export async function createRegistrationAction(
   // Cartão online (Stripe) só quando habilitado. Em standby, o método CARD
   // representa crédito/débito pago presencialmente: apenas registramos e
   // seguimos para a página de status.
-  if (parsed.data.paymentMethod === "CARD" && env.NEXT_PUBLIC_CARD_ONLINE_ENABLED) {
+  // Nada a cobrar (cupom de 100%): a inscrição já saiu confirmada. Abrir um
+  // checkout de R$0 só produziria erro do Stripe na cara da família.
+  if (
+    !gratuita &&
+    parsed.data.paymentMethod === "CARD" &&
+    env.NEXT_PUBLIC_CARD_ONLINE_ENABLED
+  ) {
     let url: string | null = null;
     try {
       url = await createCheckoutSession(registrationId);

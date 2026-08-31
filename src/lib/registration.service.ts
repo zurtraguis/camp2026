@@ -13,7 +13,7 @@ import type { RegistrationInput } from "@/lib/validation";
 import { env } from "@/lib/env";
 import { getActiveLote } from "@/lib/lote.service";
 import { isCarne, splitInstallments, installmentDueDates } from "@/lib/carne";
-import { applyPercentOff } from "@/lib/coupon";
+import { applyPercentOff, nadaAPagar } from "@/lib/coupon";
 import { resolveAndConsumeCoupon } from "@/lib/coupon.service";
 
 export interface CreatedRegistration {
@@ -22,6 +22,8 @@ export interface CreatedRegistration {
   tribo: TriboId;
   amountCents: number;
   loteOrder: number;
+  /** Valor zerado (cupom de 100%): já nasceu CONFIRMED, sem nada a cobrar. */
+  gratuita: boolean;
 }
 
 /**
@@ -93,8 +95,15 @@ export async function createRegistration(
       // À vista (Pix ou cartão) segue o fluxo de pagamento único.
       // isCarne com a data: o teto de parcelas encolhe conforme o acampamento
       // se aproxima. O schema já rejeita antes; isto é o backstop.
+      // Cupom de 100% (bolsa) zera o valor: não há pagamento a cobrar, nem
+      // parcela, nem comprovante. A inscrição já nasce confirmada — deixá-la
+      // "aguardando pagamento" prenderia a família num estado sem saída.
+      const gratuita = nadaAPagar(finalPriceCents);
+
       const carne =
-        input.paymentMethod === "PIX" && isCarne(input.installments, new Date());
+        !gratuita &&
+        input.paymentMethod === "PIX" &&
+        isCarne(input.installments, new Date());
       const installmentData = carne
         ? (() => {
             const amounts = splitInstallments(finalPriceCents, input.installments);
@@ -123,7 +132,7 @@ export async function createRegistration(
           church: input.church || null,
           city: input.city || null,
           tribo,
-          status: "PENDING_PAYMENT",
+          status: gratuita ? "CONFIRMED" : "PENDING_PAYMENT",
           isDemo: meta.isDemo ?? false,
           loteId: active.id,
           guardian: {
@@ -162,10 +171,17 @@ export async function createRegistration(
           payment: {
             create: {
               method: input.paymentMethod,
-              status: "PENDING",
+              status: gratuita ? "CONFIRMED" : "PENDING",
               amountCents: finalPriceCents,
               loteOrder: active.order,
-              pixTxid: input.paymentMethod === "PIX" ? publicCode : null,
+              // Sem valor a pagar não existe cobrança Pix: gerar txid daria à
+              // família uma chave que nunca deve ser paga.
+              pixTxid:
+                !gratuita && input.paymentMethod === "PIX" ? publicCode : null,
+              reviewedAt: gratuita ? new Date() : null,
+              reviewNote: gratuita
+                ? `Inscrição sem custo${coupon ? ` (cupom ${coupon.code}, -${coupon.percentOff}%)` : ""} — nada a pagar.`
+                : null,
               installmentsTotal: carne ? input.installments : null,
               // Auditoria do desconto (null quando não houve cupom).
               couponId: coupon?.couponId ?? null,
@@ -186,6 +202,7 @@ export async function createRegistration(
         tribo,
         amountCents: finalPriceCents,
         loteOrder: active.order,
+        gratuita,
       };
     },
     { isolationLevel: "Serializable" },
