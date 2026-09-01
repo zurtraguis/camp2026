@@ -8,11 +8,14 @@
  * não comporta mais de uma aba nem valores numéricos de verdade — aqui o valor
  * é número com formato de moeda, então dá para somar na planilha.
  *
+ * As colunas e a montagem da linha vivem em lib/export-inscricoes (puro e
+ * testado): aqui ficou só a ida ao banco e a escrita do arquivo.
+ *
  * Auth: getAdmin() + verificação manual de role — route handlers não podem
  * chamar redirect() de forma confiável; retorna 401.
  *
  * LGPD — minimização: dados sensíveis de saúde/triagem NÃO entram nesta
- * exportação geral. Para acesso clínico, use a ficha individual.
+ * exportação geral. Para acesso clínico, use o relatório de saúde.
  */
 
 import { NextResponse } from "next/server";
@@ -21,26 +24,12 @@ import { getAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listarRecebimentos } from "@/lib/recebidos.service";
 import { ORIGEM_LABEL } from "@/lib/recebidos";
-
-const STATUS_PT: Record<string, string> = {
-  PENDING_PAYMENT: "Aguard. pagamento",
-  AWAITING_REVIEW: "Em revisão",
-  CONFIRMED: "Confirmada",
-  CANCELLED: "Cancelada",
-};
-
-const METHOD_PT: Record<string, string> = {
-  CARD: "Cartão",
-  PIX: "Pix",
-};
-
-const GENDER_PT: Record<string, string> = {
-  MALE: "M",
-  FEMALE: "F",
-};
-
-/** Formato de moeda BRL na célula: soma e filtro funcionam no Excel. */
-const BRL = 'R$ #,##0.00';
+import {
+  BRL,
+  COLUNAS_INSCRICOES,
+  linhaInscricao,
+  type InscricaoParaExport,
+} from "@/lib/export-inscricoes";
 
 export async function GET() {
   const user = await getAdmin();
@@ -52,7 +41,9 @@ export async function GET() {
   const [registrations, recebimentos] = await Promise.all([
     db.registration.findMany({
       include: {
-        guardian: { select: { name: true, phone: true } },
+        guardian: {
+          select: { name: true, phone: true, email: true, relationship: true },
+        },
         payment: {
           select: {
             method: true,
@@ -62,6 +53,7 @@ export async function GET() {
             couponCode: true,
             discountPercent: true,
             originalAmountCents: true,
+            installments: { select: { status: true } },
           },
         },
         lote: { select: { name: true } },
@@ -79,52 +71,17 @@ export async function GET() {
   const ws = wb.addWorksheet("Inscrições", {
     views: [{ state: "frozen", ySplit: 1 }],
   });
-  ws.columns = [
-    { header: "Código", key: "codigo", width: 16 },
-    { header: "Nome", key: "nome", width: 32 },
-    { header: "Idade", key: "idade", width: 7 },
-    { header: "Gênero", key: "genero", width: 8 },
-    { header: "Tribo", key: "tribo", width: 12 },
-    { header: "Status", key: "status", width: 18 },
-    { header: "Forma", key: "forma", width: 14 },
-    { header: "Valor", key: "valor", width: 12, style: { numFmt: BRL } },
-    { header: "Cupom", key: "cupom", width: 12 },
-    { header: "Valor cheio", key: "cheio", width: 12, style: { numFmt: BRL } },
-    { header: "Lote", key: "lote", width: 12 },
-    { header: "Igreja", key: "igreja", width: 26 },
-    { header: "Cidade", key: "cidade", width: 18 },
-    { header: "Responsável", key: "resp", width: 28 },
-    { header: "Telefone responsável", key: "respTel", width: 20 },
-    { header: "Inscrito em", key: "criado", width: 14 },
-  ];
+  ws.columns = COLUNAS_INSCRICOES.map((c) => ({
+    header: c.header,
+    key: c.key,
+    width: c.width,
+    ...(c.moeda ? { style: { numFmt: BRL } } : {}),
+  }));
 
   for (const r of registrations) {
-    const p = r.payment;
-    const parcelas = p?.installmentsTotal;
-    ws.addRow({
-      codigo: r.publicCode,
-      nome: r.fullName,
-      idade: r.ageAtCamp,
-      genero: GENDER_PT[r.gender] ?? r.gender,
-      tribo: r.tribo ?? "",
-      status: STATUS_PT[r.status] ?? r.status,
-      forma: p
-        ? parcelas
-          ? `Carnê ${parcelas}x`
-          : (METHOD_PT[p.method] ?? p.method)
-        : "",
-      valor: p ? p.amountCents / 100 : null,
-      cupom: p?.couponCode
-        ? `${p.couponCode} (−${p.discountPercent ?? 0}%)`
-        : "",
-      cheio: p?.originalAmountCents ? p.originalAmountCents / 100 : null,
-      lote: r.lote?.name ?? "",
-      igreja: r.church ?? "",
-      cidade: r.city ?? "",
-      resp: r.guardian?.name ?? "",
-      respTel: r.guardian?.phone ?? "",
-      criado: r.createdAt.toLocaleDateString("pt-BR"),
-    });
+    ws.addRow(
+      linhaInscricao(r as unknown as InscricaoParaExport, r.lote?.name ?? null),
+    );
   }
 
   /* ── Aba 2: Recebidos (de onde veio o dinheiro) ── */
