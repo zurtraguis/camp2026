@@ -48,7 +48,10 @@ export default async function AdminDashboardPage() {
     avistaEmCaixaAgg,
     parcelasEmCaixaAgg,
   ] = await Promise.all([
-    // Recent 50 registrations for the table
+    // TODAS as inscrições ativas — não só as 50 mais recentes. A lista é
+    // limitada por natureza: o acampamento tem teto de TOTAL_CAPACITY (150)
+    // vagas, então não existe cenário de "milhares de linhas" para paginar.
+    // Cortar em 50 escondia gente da organização sem avisar direito.
     db.registration.findMany({
       where: ATIVAS,
       include: {
@@ -64,7 +67,6 @@ export default async function AdminDashboardPage() {
         lote: { select: { name: true, order: true } },
       },
       orderBy: { createdAt: "desc" },
-      take: 50,
     }),
     // Count awaiting review
     db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
@@ -300,9 +302,13 @@ export default async function AdminDashboardPage() {
             </tbody>
           </table>
         </div>
-        {registrations.length === 50 && (
+        {registrations.length > 0 && (
           <p className="mt-2 text-xs text-muted text-right">
-            Exibindo as 50 mais recentes. Use o CSV para exportar todas.
+            {registrations.length === 1
+              ? "1 inscrição ativa (todas listadas)."
+              : `${registrations.length} inscrições ativas — todas listadas.`}{" "}
+            Use <span className="text-creme">Exportar</span> para a planilha
+            completa.
           </p>
         )}
       </section>
