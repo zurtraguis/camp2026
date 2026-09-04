@@ -24,6 +24,14 @@ import {
   type CategoriaDespesa,
   type FormaPagamentoDespesa,
 } from "@/lib/custos";
+import {
+  montarExtrato,
+  compromissos,
+  resumoCaixa,
+  saldoAtual,
+  type Movimento,
+} from "@/lib/caixa";
+import { ORIGEM_LABEL } from "@/lib/recebidos";
 import { formatBRL } from "@/lib/format";
 import { Badge, Callout, Card } from "@/components/ui";
 import {
@@ -64,6 +72,45 @@ export default async function CustosPage() {
   const custos = totaisDosCustos(despesas, hoje);
   const porCategoria = totaisPorCategoria(despesas, hoje);
   const b = balanco(recebidoCents, aReceberCents, custos);
+
+  // Extrato de caixa: entradas e saidas na mesma linha do tempo. Elas viviam
+  // em telas separadas, e nenhuma respondia "depois de pagar o que ja esta
+  // combinado, sobra quanto?".
+  const movimentos: Movimento[] = [
+    ...recebimentos
+      .filter((r) => r.em !== null)
+      .map((r) => ({
+        id: `in-${r.id}`,
+        em: r.em as Date,
+        tipo: "ENTRADA" as const,
+        descricao: `${r.nome} - ${r.descricao}`,
+        meio: ORIGEM_LABEL[r.origem],
+        valorCents: r.valorCents,
+      })),
+    ...despesas.flatMap((d) =>
+      d.payments.map((pg) => ({
+        id: `out-${pg.id}`,
+        em: pg.paidAt,
+        tipo: "SAIDA" as const,
+        descricao: d.description,
+        meio: FORMA_DESPESA_LABEL[pg.method as FormaPagamentoDespesa],
+        valorCents: pg.amountCents,
+      })),
+    ),
+  ];
+  const extrato = montarExtrato(movimentos);
+  const emCaixa = saldoAtual(movimentos);
+  const aPagar = compromissos(
+    despesas.map((d) => ({
+      id: d.id,
+      description: d.description,
+      abertoCents: saldoDaDespesa(d, hoje).abertoCents,
+      dueDate: d.dueDate,
+    })),
+    emCaixa,
+    hoje,
+  );
+  const caixa = resumoCaixa(emCaixa, aPagar);
 
   return (
     <div className="space-y-8">
@@ -158,6 +205,167 @@ export default async function CustosPage() {
           </div>
         </section>
       )}
+
+      {/* Controle do saldo: o que esta combinado x o que ha em caixa */}
+      <section aria-labelledby="caixa-heading" className="space-y-4">
+        <h2 id="caixa-heading" className="font-display text-xl text-creme">
+          Controle do saldo
+        </h2>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card className="flex flex-col gap-1">
+            <p className="text-xs font-condensed uppercase tracking-wide text-muted">
+              Em caixa
+            </p>
+            <p className="font-display text-3xl tabular-nums text-creme">
+              {formatBRL(caixa.saldoCents)}
+            </p>
+            <p className="text-xs text-muted">
+              O que ja entrou, menos o que ja saiu
+            </p>
+          </Card>
+          <Card className="flex flex-col gap-1">
+            <p className="text-xs font-condensed uppercase tracking-wide text-muted">
+              Compromissado
+            </p>
+            <p className="font-display text-3xl tabular-nums text-danger">
+              {formatBRL(caixa.compromissadoCents)}
+            </p>
+            <p className="text-xs text-muted">
+              Despesas combinadas ainda nao pagas
+            </p>
+          </Card>
+          <Card className="flex flex-col gap-1">
+            <p className="text-xs font-condensed uppercase tracking-wide text-muted">
+              Livre
+            </p>
+            <p
+              className={`font-display text-3xl tabular-nums ${
+                caixa.livreCents < 0 ? "text-danger" : "text-verde-limao"
+              }`}
+            >
+              {formatBRL(caixa.livreCents)}
+            </p>
+            <p className="text-xs text-muted">
+              O que da para assumir sem contar com quem ainda nao pagou
+            </p>
+          </Card>
+        </div>
+
+        {caixa.primeiroDescoberto && (
+          <Callout tone="danger" title="O caixa nao cobre tudo que esta combinado">
+            <p>
+              A partir de{" "}
+              <strong className="text-creme">
+                {caixa.primeiroDescoberto.descricao}
+              </strong>
+              {caixa.primeiroDescoberto.dueDate
+                ? ` (vence ${caixa.primeiroDescoberto.dueDate.toLocaleDateString("pt-BR")})`
+                : ""}{" "}
+              falta dinheiro: {formatBRL(caixa.faltaCents)}.
+            </p>
+            <p className="mt-1 text-xs text-muted">
+              Esta conta usa so o que JA esta em caixa - promessa de pagamento
+              nao paga fornecedor. Contando com as inscricoes em aberto, o
+              cenario completo esta na projecao do topo.
+            </p>
+          </Callout>
+        )}
+
+        {aPagar.length > 0 && (
+          <Card className="overflow-x-auto">
+            <h3 className="mb-3 font-condensed text-xs uppercase tracking-widest text-muted">
+              O que ainda falta pagar, na ordem em que vence
+            </h3>
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="pb-2 pr-3 font-condensed">Despesa</th>
+                  <th className="pb-2 pr-3 font-condensed">Vence</th>
+                  <th className="pb-2 pr-3 text-right font-condensed">
+                    Falta pagar
+                  </th>
+                  <th className="pb-2 text-right font-condensed">Sobra depois</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aPagar.map((c) => (
+                  <tr key={c.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2 pr-3 text-creme">
+                      {c.descricao}
+                      {c.vencido && (
+                        <Badge className="ml-2 border-danger/40 bg-danger/10 text-danger">
+                          vencida
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-muted">
+                      {c.dueDate
+                        ? c.dueDate.toLocaleDateString("pt-BR")
+                        : "sem data"}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums text-creme">
+                      {formatBRL(c.valorCents)}
+                    </td>
+                    <td
+                      className={`py-2 text-right tabular-nums ${
+                        c.descoberto ? "font-semibold text-danger" : "text-muted"
+                      }`}
+                    >
+                      {formatBRL(c.saldoDepoisCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+
+        {extrato.length > 0 && (
+          <Card className="overflow-x-auto">
+            <h3 className="mb-3 font-condensed text-xs uppercase tracking-widest text-muted">
+              Extrato ({extrato.length} movimentos)
+            </h3>
+            <table className="w-full min-w-[38rem] text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="pb-2 pr-3 font-condensed">Quando</th>
+                  <th className="pb-2 pr-3 font-condensed">Movimento</th>
+                  <th className="pb-2 pr-3 font-condensed">Meio</th>
+                  <th className="pb-2 pr-3 text-right font-condensed">Valor</th>
+                  <th className="pb-2 text-right font-condensed">Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extrato.map((l) => (
+                  <tr key={l.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2 pr-3 whitespace-nowrap text-muted">
+                      {l.em.toLocaleDateString("pt-BR")}
+                    </td>
+                    <td className="py-2 pr-3 text-creme">{l.descricao}</td>
+                    <td className="py-2 pr-3 text-muted">{l.meio}</td>
+                    <td
+                      className={`py-2 pr-3 text-right tabular-nums ${
+                        l.tipo === "ENTRADA" ? "text-verde-limao" : "text-danger"
+                      }`}
+                    >
+                      {l.tipo === "ENTRADA" ? "+" : "-"}
+                      {formatBRL(l.valorCents)}
+                    </td>
+                    <td
+                      className={`py-2 text-right tabular-nums ${
+                        l.saldoCents < 0 ? "text-danger" : "text-creme"
+                      }`}
+                    >
+                      {formatBRL(l.saldoCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </section>
 
       <Card>
         <h2 className="mb-4 border-b border-border pb-2 font-condensed text-xs uppercase tracking-widest text-muted">
