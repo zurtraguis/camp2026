@@ -32,6 +32,29 @@ describe("as tribos vigentes", () => {
   });
 });
 
+describe("trocarTriboSchema (troca manual pelo admin)", () => {
+  it("aceita só as tribos VIGENTES", async () => {
+    const { trocarTriboSchema } = await import("./validation");
+    for (const t of TRIBOS) {
+      expect(
+        trocarTriboSchema.safeParse({ registrationId: "x", tribo: t }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("recusa uma tribo que não existe mais", async () => {
+    // O banco ainda aceita PISTIS no enum até a migração rodar. Validar contra
+    // TRIBOS é o que impede a troca manual de recolocar alguém lá dentro.
+    const { trocarTriboSchema } = await import("./validation");
+    expect(
+      trocarTriboSchema.safeParse({ registrationId: "x", tribo: "PISTIS" }).success,
+    ).toBe(false);
+    expect(
+      trocarTriboSchema.safeParse({ registrationId: "x", tribo: "" }).success,
+    ).toBe(false);
+  });
+});
+
 describe("chooseTribo (online)", () => {
   it("distribui os primeiros campistas do mesmo estrato em tribos distintas", () => {
     const counts = emptyCounts();

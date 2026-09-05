@@ -20,6 +20,7 @@ import {
   despesaEditSchema,
   pagamentoDespesaSchema,
   observacaoSchema,
+  trocarTriboSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
@@ -43,7 +44,13 @@ import {
   removerPagamentoDespesa,
   removerDespesa,
 } from "@/lib/custos.service";
-import { rebalance, buildTriboUpdate, type Camper, type Gender } from "@/lib/tribos";
+import {
+  rebalance,
+  buildTriboUpdate,
+  TRIBO_META,
+  type Camper,
+  type Gender,
+} from "@/lib/tribos";
 
 export interface LoginState {
   ok: boolean;
@@ -333,6 +340,42 @@ export async function salvarObservacaoAction(
     };
   } catch {
     return { ok: false, message: "Falha ao salvar a observação." };
+  }
+}
+
+/**
+ * Move um campista de tribo na mão. O balanceamento não sabe de irmãos que
+ * precisam ficar juntos nem do que a família pediu — isso é decisão humana.
+ *
+ * Não reequilibra nada em seguida: quem move sabe o que está fazendo, e a tela
+ * de Tribos continua mostrando a dispersão para conferir o efeito.
+ */
+export async function trocarTriboAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = trocarTriboSchema.safeParse({
+    registrationId: formData.get("registrationId"),
+    tribo: formData.get("tribo"),
+  });
+  if (!parsed.success) return { ok: false, message: "Tribo inválida." };
+
+  try {
+    const reg = await db.registration.update({
+      where: { id: parsed.data.registrationId },
+      data: { tribo: parsed.data.tribo },
+      select: { fullName: true },
+    });
+    revalidatePath(`/admin/inscricao/${parsed.data.registrationId}`);
+    revalidatePath("/admin/tribos");
+    revalidatePath("/admin");
+    return {
+      ok: true,
+      message: `${reg.fullName} agora é da tribo ${TRIBO_META[parsed.data.tribo].nome}.`,
+    };
+  } catch {
+    return { ok: false, message: "Falha ao trocar a tribo." };
   }
 }
 
