@@ -78,7 +78,7 @@ export async function ValoresSection() {
               {[
                 { nome: "1º Lote", valor: "R$ 300", destaque: true },
                 { nome: "2º Lote", valor: "R$ 400", destaque: false },
-                { nome: "3º Lote", valor: "R$ 450", destaque: false },
+                { nome: "3º Lote", valor: "R$ 400", destaque: false },
               ].map((l) => (
                 <div
                   key={l.nome}
