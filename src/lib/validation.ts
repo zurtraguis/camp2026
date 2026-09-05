@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ageOn, MIN_AGE, MAX_AGE } from "./format";
 import { maxInstallmentsForDate, MIN_INSTALLMENTS } from "./carne";
+import { TRIBOS } from "./tribos";
 
 /** Flags de triagem confidencial (manual, seção 10). */
 export const TRIAGE_FLAGS = [
@@ -179,6 +180,18 @@ export const observacaoSchema = z.object({
       const t = v.trim();
       return t.length === 0 ? null : t;
     }),
+});
+
+/* ── Troca manual de tribo ───────────────────────────────── */
+
+/**
+ * A tribo tem de ser uma das VIGENTES. Validar contra TRIBOS (e não contra o
+ * enum do Prisma) impede gravar uma tribo que o banco ainda aceita mas o
+ * acampamento não usa mais — foi o caso de PISTIS depois de agosto/2026.
+ */
+export const trocarTriboSchema = z.object({
+  registrationId: z.string().min(1),
+  tribo: z.enum(TRIBOS),
 });
 
 /* ── Custos do acampamento ───────────────────────────────────────────────── */

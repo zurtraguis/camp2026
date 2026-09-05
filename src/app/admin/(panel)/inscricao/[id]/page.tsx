@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatBRL, formatPhone } from "@/lib/format";
 import { carneProgress } from "@/lib/carne";
-import { TRIBO_META } from "@/lib/tribos";
+import { TRIBO_META, type TriboId } from "@/lib/tribos";
 import { TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { signedReceiptUrl } from "@/lib/storage";
 import { bloqueioCupomRetroativo } from "@/lib/coupon";
@@ -12,6 +12,7 @@ import { ReviewForm } from "@/app/admin/(panel)/em-aberto/ReviewForm";
 import { AplicarCupomForm } from "./AplicarCupomForm";
 import { DeleteRegistrationForm } from "./DeleteRegistrationForm";
 import { ObservacaoForm } from "./ObservacaoForm";
+import { TrocarTriboForm } from "./TrocarTriboForm";
 import Link from "next/link";
 
 interface Props {
@@ -213,25 +214,35 @@ export default async function InscricaoDetailPage({ params }: Props) {
           </div>
           <p className="text-sm text-muted font-mono">{reg.publicCode}</p>
         </div>
-        {triboMeta && (
-          <div
-            className="flex items-center gap-2 rounded-xl border px-4 py-2"
-            style={{
-              borderColor: triboMeta.cor + "44",
-              background: triboMeta.cor + "14",
-            }}
-          >
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ background: triboMeta.cor }}
-              aria-hidden="true"
-            />
-            <span className="font-display text-lg" style={{ color: triboMeta.cor }}>
-              {triboMeta.nome}
-            </span>
-            <span className="text-xs text-muted">({triboMeta.significado})</span>
-          </div>
-        )}
+        {/* Tribo + a possibilidade de mover o campista de time na mao. */}
+        <div className="flex flex-col items-end gap-2">
+          {triboMeta && (
+            <div
+              className="flex items-center gap-2 rounded-xl border px-4 py-2"
+              style={{
+                borderColor: triboMeta.cor + "44",
+                background: triboMeta.cor + "14",
+              }}
+            >
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ background: triboMeta.cor }}
+                aria-hidden="true"
+              />
+              <span
+                className="font-display text-lg"
+                style={{ color: triboMeta.cor }}
+              >
+                {triboMeta.nome}
+              </span>
+              <span className="text-xs text-muted">({triboMeta.significado})</span>
+            </div>
+          )}
+          <TrocarTriboForm
+            registrationId={reg.id}
+            atual={(reg.tribo as TriboId | null) ?? null}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
