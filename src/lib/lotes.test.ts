@@ -9,7 +9,7 @@ import {
 const LOTES: LoteRow[] = [
   { id: "l1", name: "1º Lote", order: 1, priceCents: 30000, capacity: 80 },
   { id: "l2", name: "2º Lote", order: 2, priceCents: 40000, capacity: 80 },
-  { id: "l3", name: "3º Lote", order: 3, priceCents: 45000, capacity: 80 },
+  { id: "l3", name: "3º Lote", order: 3, priceCents: 40000, capacity: 80 },
 ];
 
 // Datas de referência (horário de Brasília).
@@ -54,10 +54,10 @@ describe("resolveActiveLote — preço por data", () => {
     expect(a.priceCents).toBe(40000);
   });
 
-  it("setembro → 3º lote, R$450", () => {
+  it("setembro → 3º lote, R$400 (o preço parou de subir em agosto)", () => {
     const a = resolveActiveLote(LOTES, 3, SETEMBRO)!;
     expect(a.order).toBe(3);
-    expect(a.priceCents).toBe(45000);
+    expect(a.priceCents).toBe(40000);
   });
 
   it("ordena lotes fora de ordem", () => {

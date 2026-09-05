@@ -53,7 +53,7 @@ export async function seedLotes(): Promise<void> {
   const lotes = [
     { name: "1º Lote", order: 1, priceCents: 30000, capacity: 80 },
     { name: "2º Lote", order: 2, priceCents: 40000, capacity: 80 },
-    { name: "3º Lote", order: 3, priceCents: 45000, capacity: 80 },
+    { name: "3º Lote", order: 3, priceCents: 40000, capacity: 80 },
   ];
   for (const l of lotes) {
     await db.lote.upsert({
@@ -117,7 +117,7 @@ export function inscricaoValida(
 
 /**
  * Preço do lote vigente AGORA. Os testes não podem chumbar R$300: o preço muda
- * por data (1º lote até 31/07, depois 400/450) e o teto de parcelas encolhe
+ * por data (1º lote até 31/07, depois 400) e o teto de parcelas encolhe
  * até o acampamento. Derivar mantém a suíte verde ao longo do tempo.
  */
 export async function precoVigente(): Promise<number> {

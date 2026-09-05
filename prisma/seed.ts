@@ -50,7 +50,7 @@ const prisma = new PrismaClient({ adapter });
 const LOTES = [
   { name: "1º Lote", order: 1, priceCents: 30000, capacity: 80 },
   { name: "2º Lote", order: 2, priceCents: 40000, capacity: 80 },
-  { name: "3º Lote", order: 3, priceCents: 45000, capacity: 80 },
+  { name: "3º Lote", order: 3, priceCents: 40000, capacity: 80 },
 ];
 
 const DEMO_NAMES = [

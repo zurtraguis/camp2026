@@ -91,7 +91,7 @@ Primitivos em [`src/components/ui/index.tsx`](../src/components/ui/index.tsx).
 ## 6. Padrões de domínio
 
 - **Badge de tribo**: Ágape=`verde-limao` · Eirene=`verde-folha` · Chara=`#9c6b2e`+texto claro. ⚠️ Chara dá 3.8:1 — usar **Oswald uppercase bold (≥14px)** ou clarear o fundo p/ `#b07d3a`.
-- **Card de lote**: preço sobe por lote (1º R$300, 2º R$400, 3º R$450). Estados: aberto (borda lima) · esgotado (opacity + CTA disabled, `aria-disabled`) · em breve.
+- **Card de lote**: preço por lote (1º R$300, 2º e 3º R$400). Estados: aberto (borda lima) · esgotado (opacity + CTA disabled, `aria-disabled`) · em breve.
 - **Seletor de pagamento**: radio group (`fieldset`+`legend`) — Cartão (Stripe) / Pix manual.
 - **Painel Pix**: QR com `alt`, "Copiar código" (feedback `aria-live`), upload de comprovante (label visível + hint de formato).
 - **Progresso multi-step**: Dados → Tribo → Pagamento (passo atual em verde-limão).

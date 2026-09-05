@@ -89,10 +89,12 @@ No Supabase, crie um bucket **privado** chamado `comprovantes`.
 
 ## 4. Lotes e preço
 
-Os lotes vendem em ordem; ao preencher a capacidade de um lote, o próximo (mais
-caro) passa a vigorar. Padrão do seed: 1º R$300 (80 vagas), 2º R$400 (80), 3º
-R$450 (80). A lógica pura é `resolveActiveLote(lotes, vendidos)` em
-`src/lib/lotes.ts`. Ajuste preços/capacidades pelo seed ou direto no banco.
+O preço muda por DATA (`LOTE_SCHEDULE`), não por capacidade: até 31/07 vale o
+1º lote, de 01/08 o 2º, de 01/09 o 3º. A disponibilidade é um teto global de
+`TOTAL_CAPACITY` vagas. Padrão do seed: 1º R$300, 2º R$400, 3º R$400 — o
+preço parou de subir em agosto, por decisão da organização (set/2026). A lógica
+pura é `resolveActiveLote(lotes, vendidos, agora)` em `src/lib/lotes.ts`.
+Ajuste preços pelo seed ou direto no banco.
 
 ## 5. Balanceamento das tribos
 
