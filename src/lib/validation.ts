@@ -194,6 +194,21 @@ export const trocarTriboSchema = z.object({
   tribo: z.enum(TRIBOS),
 });
 
+/* ── Intercessão ───────────────────────────────────────── */
+
+export const coordenadoresSchema = z.object({
+  nomes: z.string().trim().min(1, "Cole ao menos um nome."),
+});
+
+export const coordenadorIdSchema = z.object({
+  id: z.string().min(1),
+});
+
+export const renomearCoordenadorSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(2, "Nome muito curto.").max(120),
+});
+
 /* ── Custos do acampamento ───────────────────────────────────────────────── */
 
 /** "1.234,56" ou "1234.56" → centavos. Aceita o que o organizador digita. */

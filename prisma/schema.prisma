@@ -163,6 +163,12 @@ model Registration {
   // pendência com a família, o que for). Interno: nunca sai para o campista.
   adminNotes String?
 
+  // Coordenador que ora por este campista. onDelete: SetNull — remover um
+  // coordenador não pode apagar a inscrição; o campista volta para a fila e
+  // a próxima distribuição o pega.
+  intercessorId String?
+  intercessor   Coordinator? @relation(fields: [intercessorId], references: [id], onDelete: SetNull)
+
   loteId String
   lote   Lote   @relation(fields: [loteId], references: [id])
 
@@ -178,6 +184,17 @@ model Registration {
   @@index([status])
   @@index([gender, ageAtCamp])
   @@index([isDemo])
+  @@index([intercessorId])
+}
+
+// Coordenador de intercessão: quem ora por um grupo de campistas.
+model Coordinator {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campers Registration[]
 }
 
 // Responsável legal — autorização do menor.
