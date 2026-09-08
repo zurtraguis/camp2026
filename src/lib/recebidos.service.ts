@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import { extrairRecebimentos, type Recebimento } from "@/lib/recebidos";
+import { ATIVAS } from "@/lib/registration-status";
 
 /** Include compartilhado: tudo que o extrato precisa para explicar a entrada. */
 const INCLUDE = {
@@ -20,7 +21,7 @@ const INCLUDE = {
  */
 export async function listarRecebimentos(): Promise<Recebimento[]> {
   const pagamentos = await db.payment.findMany({
-    where: { registration: { status: { not: "CANCELLED" } } },
+    where: { registration: ATIVAS },
     include: INCLUDE,
   });
   return extrairRecebimentos(pagamentos);

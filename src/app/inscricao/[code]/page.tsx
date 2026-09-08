@@ -39,6 +39,7 @@ export default async function RegistrationStatusPage({
   const isConfirmed = reg.status === "CONFIRMED";
   const isAwaitingReview = reg.status === "AWAITING_REVIEW";
   const isCancelled = reg.status === "CANCELLED";
+  const isInactive = reg.status === "INACTIVE";
   const isPix = payment?.method === "PIX";
   const isCarne = isPix && (payment?.installmentsTotal ?? 0) >= 2;
   const isPixAvista = isPix && !isCarne;
@@ -48,7 +49,7 @@ export default async function RegistrationStatusPage({
 
   /* Fetch Pix display data server-side (server-only function) */
   let pixDisplay = null;
-  if (isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled) {
+  if (isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled && !isInactive) {
     try {
       pixDisplay = await getPixDisplay(code);
     } catch (err) {
@@ -58,7 +59,7 @@ export default async function RegistrationStatusPage({
 
   /* Carnê: busca as parcelas com QR/copia-e-cola */
   let carneDisplay = null;
-  if (isCarne && !isCancelled) {
+  if (isCarne && !isCancelled && !isInactive) {
     try {
       carneDisplay = await getCarneDisplay(code);
     } catch (err) {
@@ -111,6 +112,11 @@ export default async function RegistrationStatusPage({
                 Cancelada
               </Badge>
             )}
+            {isInactive && (
+              <Badge className="border-amarelo-sol/40 bg-amarelo-sol/10 text-amarelo-sol">
+                Desativada
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -144,6 +150,18 @@ export default async function RegistrationStatusPage({
           </Callout>
         )}
 
+        {/* ── Status: DESATIVADA ──
+            Precisa dizer o que aconteceu E o que fazer. Sem isto a família
+            veria a página sem chave Pix nenhuma e sem explicação. */}
+        {isInactive && (
+          <Callout tone="warning" title="Inscrição desativada">
+            Como o pagamento não foi feito e não conseguimos contato, esta
+            inscrição foi desativada e a vaga voltou a ficar disponível. Se você
+            ainda quer participar, fale com a organização — havendo vaga, dá
+            para reativar.
+          </Callout>
+        )}
+
         {/* ── Status: CANCELLED ── */}
         {isCancelled && (
           <Callout tone="danger" title="Inscrição cancelada">
@@ -153,7 +171,7 @@ export default async function RegistrationStatusPage({
         )}
 
         {/* ── CARD: pending payment ── */}
-        {isCard && !paymentConfirmed && !isCancelled && !isAwaitingReview && (
+        {isCard && !paymentConfirmed && !isCancelled && !isInactive && !isAwaitingReview && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-surface-2 p-4">
               <p className="text-xs font-condensed uppercase tracking-widest text-muted">
@@ -188,7 +206,7 @@ export default async function RegistrationStatusPage({
         )}
 
         {/* ── PIX à vista: painel de pagamento ── */}
-        {isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled && (
+        {isPixAvista && !isConfirmed && !isAwaitingReview && !isCancelled && !isInactive && (
           <>
             {pixDisplay ? (
               <PixPanel
@@ -211,7 +229,7 @@ export default async function RegistrationStatusPage({
         )}
 
         {/* ── Carnê Pix: vaga garantida na 1ª parcela + parcelas ── */}
-        {isCarne && !isCancelled && (
+        {isCarne && !isCancelled && !isInactive && (
           <>
             {isConfirmed && !carneAllPaid && (
               <Callout tone="success" title="Vaga garantida!">

@@ -194,6 +194,16 @@ export const trocarTriboSchema = z.object({
   tribo: z.enum(TRIBOS),
 });
 
+/* ── Ativar / desativar inscrição ────────────────────────────── */
+
+export const registrationIdSchema = z.object({ id: z.string().min(1) });
+
+export const desativarSchema = z.object({
+  id: z.string().min(1),
+  /** Motivo opcional; vai para a observação interna da inscrição. */
+  motivo: z.string().trim().max(300).optional(),
+});
+
 /* ── Intercessão ───────────────────────────────────────── */
 
 export const coordenadoresSchema = z.object({

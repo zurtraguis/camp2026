@@ -7,9 +7,7 @@ import {
   type CampistaParaIntercessao,
   type CoordenadorParaIntercessao,
 } from "@/lib/intercessao";
-
-/** Inscrições vivas — cancelada não entra na intercessão. */
-const ATIVAS = { status: { not: "CANCELLED" } } as const;
+import { ATIVAS } from "@/lib/registration-status";
 
 export function listarCoordenadores() {
   return db.coordinator.findMany({ orderBy: { createdAt: "asc" } });

@@ -4,6 +4,7 @@ import { TRIBOS, TRIBO_META, balanceReport, type TriboId, type Gender } from "@/
 import Link from "next/link";
 import { Card, Callout } from "@/components/ui";
 import { RebalanceForm } from "./RebalanceForm";
+import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Tribos" };
 
@@ -20,7 +21,7 @@ export default async function TribosPage() {
   };
 
   const registrations = (await db.registration.findMany({
-    where: { status: { not: "CANCELLED" } },
+    where: ATIVAS,
     select: {
       id: true,
       fullName: true,

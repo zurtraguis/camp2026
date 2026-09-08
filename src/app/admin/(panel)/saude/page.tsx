@@ -19,6 +19,7 @@ import { TRIBO_META } from "@/lib/tribos";
 import { Badge, Callout, Card } from "@/components/ui";
 import Link from "next/link";
 import { RelatorioImpressao, type FichaSaude } from "./RelatorioImpressao";
+import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Saúde" };
 
@@ -37,7 +38,7 @@ export default async function SaudePage() {
   // Só quem realmente vai: cancelados fora. Ordenado por nome para procurar
   // rápido no papel durante o acampamento.
   const inscricoes = await db.registration.findMany({
-    where: { status: { not: "CANCELLED" }, isDemo: false },
+    where: { ...ATIVAS, isDemo: false },
     include: {
       health: true,
       guardian: { select: { name: true, phone: true, relationship: true } },

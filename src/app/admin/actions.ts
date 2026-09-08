@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { ATIVAS } from "@/lib/registration-status";
 import {
   verifyPassword,
   createSession,
@@ -24,6 +25,8 @@ import {
   coordenadoresSchema,
   coordenadorIdSchema,
   renomearCoordenadorSchema,
+  desativarSchema,
+  registrationIdSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
@@ -53,6 +56,10 @@ import {
   removerCoordenador,
   distribuirIntercessao,
 } from "@/lib/intercessao.service";
+import {
+  desativarInscricao,
+  reativarInscricao,
+} from "@/lib/ativacao.service";
 import {
   rebalance,
   buildTriboUpdate,
@@ -385,6 +392,73 @@ export async function trocarTriboAction(
     };
   } catch {
     return { ok: false, message: "Falha ao trocar a tribo." };
+  }
+}
+
+/* ── Ativar / desativar inscrição ─────────────────────────────── */
+
+/**
+ * Desativa quem sumiu e não pagou: libera a vaga e tira da tribo. Nada é
+ * apagado — a pessoa pode voltar.
+ */
+export async function desativarInscricaoAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = desativarSchema.safeParse({
+    id: formData.get("id"),
+    motivo: formData.get("motivo") ?? "",
+  });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  try {
+    const r = await desativarInscricao(parsed.data.id, parsed.data.motivo);
+    revalidatePath(`/admin/inscricao/${parsed.data.id}`);
+    revalidatePath("/admin");
+    revalidatePath("/admin/tribos");
+    revalidatePath("/admin/em-aberto");
+    revalidatePath("/admin/intercessao");
+    return {
+      ok: true,
+      message: `${r.fullName} foi desativado(a): vaga liberada e fora da tribo.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao desativar.",
+    };
+  }
+}
+
+/**
+ * Reativa: a tribo é sorteada AGORA, com a distribuição do dia — devolver a
+ * tribo antiga desfaria o equilíbrio que foi refeito sem essa pessoa.
+ */
+export async function reativarInscricaoAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = registrationIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) return { ok: false, message: "Dados inválidos." };
+  try {
+    const r = await reativarInscricao(parsed.data.id);
+    revalidatePath(`/admin/inscricao/${parsed.data.id}`);
+    revalidatePath("/admin");
+    revalidatePath("/admin/tribos");
+    revalidatePath("/admin/em-aberto");
+    revalidatePath("/admin/intercessao");
+    return {
+      ok: true,
+      message: `${r.fullName} voltou — tribo ${TRIBO_META[r.tribo].nome}, pela distribuição de hoje.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao reativar.",
+    };
   }
 }
 
@@ -749,7 +823,7 @@ export async function removerDespesaAction(
 export async function rebalanceAction(): Promise<void> {
   await requireAdmin();
   const regs = await db.registration.findMany({
-    where: { status: { not: "CANCELLED" } },
+    where: ATIVAS,
     select: { id: true, gender: true, ageAtCamp: true },
   });
   const campers: Camper[] = regs.map((r) => ({

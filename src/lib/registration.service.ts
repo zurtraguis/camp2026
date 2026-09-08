@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { ATIVAS } from "@/lib/registration-status";
 import {
   chooseTribo,
   emptyCounts,
@@ -49,7 +50,7 @@ export async function createRegistration(
       // mesmo CPF não passam os dois (o segundo aborta). O action faz um
       // pré-check para a mensagem amigável no campo; este é o backstop.
       const dup = await tx.registration.findFirst({
-        where: { cpf: input.cpf, status: { not: "CANCELLED" } },
+        where: { cpf: input.cpf, ...ATIVAS },
         select: { id: true },
       });
       if (dup) {
@@ -60,7 +61,7 @@ export async function createRegistration(
       // Reconstrói as contagens atuais por tribo/estrato dentro da transação.
       const grouped = await tx.registration.groupBy({
         by: ["tribo", "gender", "ageAtCamp"],
-        where: { status: { not: "CANCELLED" } },
+        where: ATIVAS,
         _count: { _all: true },
       });
       const counts = emptyCounts();
@@ -216,7 +217,7 @@ export async function createRegistration(
  */
 export async function findActiveRegistrationByCpf(cpfDigits: string) {
   return db.registration.findFirst({
-    where: { cpf: cpfDigits, status: { not: "CANCELLED" } },
+    where: { cpf: cpfDigits, ...ATIVAS },
     select: { id: true },
   });
 }
@@ -237,7 +238,7 @@ export async function deleteRegistration(id: string) {
  */
 export async function findRegistrationsByGuardianCpf(cpfDigits: string) {
   return db.registration.findMany({
-    where: { guardian: { cpf: cpfDigits }, status: { not: "CANCELLED" } },
+    where: { guardian: { cpf: cpfDigits }, ...ATIVAS },
     select: { publicCode: true, fullName: true, status: true },
     orderBy: { createdAt: "desc" },
     take: 10,

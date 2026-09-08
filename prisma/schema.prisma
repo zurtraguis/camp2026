@@ -101,6 +101,7 @@ enum RegistrationStatus {
   PENDING_PAYMENT // inscrição criada, aguardando pagamento
   AWAITING_REVIEW // Pix com comprovante enviado, aguardando admin
   CONFIRMED // pago/confirmado
+  INACTIVE // sumiu e não pagou: libera a vaga e sai da tribo, mas pode voltar
   CANCELLED
 }
 
@@ -153,8 +154,10 @@ model Registration {
   church    String?
   city      String?
 
-  // Tribo atribuída no momento da inscrição (balanceamento estratificado)
-  tribo Tribo
+  // Tribo atribuída no momento da inscrição (balanceamento estratificado).
+  // Nula quando a inscrição está DESATIVADA: quem não vem não ocupa lugar numa
+  // tribo. Ao reativar, recebe tribo de novo como quem se inscreve naquele dia.
+  tribo Tribo?
 
   status RegistrationStatus @default(PENDING_PAYMENT)
   isDemo Boolean            @default(false)

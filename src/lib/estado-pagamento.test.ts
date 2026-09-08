@@ -99,6 +99,31 @@ describe("bloqueioEnvioComprovante (Pix à vista)", () => {
   });
 });
 
+describe("inscrição desativada", () => {
+  it("não aceita comprovante — a vaga já foi liberada", () => {
+    // Aceitar aqui daria à família a impressão de que a vaga continua de pé.
+    // Ela precisa falar com a organização ANTES de pagar.
+    const m = bloqueioEnvioComprovante({
+      method: "PIX",
+      status: "PENDING",
+      installmentsTotal: null,
+      temParcelas: false,
+      registrationStatus: "INACTIVE",
+    });
+    expect(m).toMatch(/desativada/i);
+    expect(m).toMatch(/organização/i);
+  });
+
+  it("também não aceita comprovante de parcela", () => {
+    expect(
+      bloqueioEnvioParcela({
+        installmentStatus: "PENDING",
+        registrationStatus: "INACTIVE",
+      }),
+    ).toMatch(/desativada/i);
+  });
+});
+
 describe("bloqueioEnvioParcela", () => {
   it("parcela pendente aceita", () => {
     expect(
