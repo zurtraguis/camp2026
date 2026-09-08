@@ -11,6 +11,7 @@ export type RegistrationStatus =
   | "PENDING_PAYMENT"
   | "AWAITING_REVIEW"
   | "CONFIRMED"
+  | "INACTIVE"
   | "CANCELLED";
 
 /**
@@ -44,6 +45,11 @@ export function bloqueioEnvioComprovante(p: {
   if (p.registrationStatus === "CANCELLED") {
     return "Esta inscrição foi cancelada. Fale com a organização.";
   }
+  // Desativada: aceitar comprovante aqui daria à família a impressão de que a
+  // vaga continua de pé — e ela foi liberada. Precisa passar pela organização.
+  if (p.registrationStatus === "INACTIVE") {
+    return "Esta inscrição está desativada e a vaga foi liberada. Fale com a organização antes de pagar.";
+  }
   if (p.method !== "PIX") return "Esta inscrição não é via Pix.";
   if (p.status === "CONFIRMED") {
     return "Este pagamento já está confirmado — não é preciso enviar comprovante.";
@@ -63,6 +69,9 @@ export function bloqueioEnvioParcela(p: {
 }): string | null {
   if (p.registrationStatus === "CANCELLED") {
     return "Esta inscrição foi cancelada. Fale com a organização.";
+  }
+  if (p.registrationStatus === "INACTIVE") {
+    return "Esta inscrição está desativada e a vaga foi liberada. Fale com a organização antes de pagar.";
   }
   if (p.installmentStatus === "CONFIRMED") {
     return "Esta parcela já foi confirmada.";

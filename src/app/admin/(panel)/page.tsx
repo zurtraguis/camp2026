@@ -5,6 +5,7 @@ import { formatBRL } from "@/lib/format";
 import { carneProgress } from "@/lib/carne";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import Link from "next/link";
+import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Dashboard" };
 
@@ -13,6 +14,7 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Aguard. pgto",
   AWAITING_REVIEW: "Em revisão",
   CONFIRMED: "Confirmada",
+  INACTIVE: "Desativada",
   CANCELLED: "Cancelada",
 };
 
@@ -20,6 +22,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_PAYMENT: "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol",
   AWAITING_REVIEW: "border-info/30 bg-info/10 text-info",
   CONFIRMED: "border-verde-limao/30 bg-verde-limao/10 text-verde-limao",
+  INACTIVE: "border-border bg-surface-2 text-muted",
   CANCELLED: "border-danger/30 bg-danger/10 text-danger",
 };
 
@@ -34,12 +37,12 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 /** Inscrições vivas — base comum de todos os números desta página. */
-const ATIVAS = { status: { not: "CANCELLED" } } as const;
 
 export default async function AdminDashboardPage() {
   await requireAdmin();
   const [
     registrations,
+    desativadas,
     pendingReview,
     confirmed,
     byTribo,
@@ -67,6 +70,13 @@ export default async function AdminDashboardPage() {
         lote: { select: { name: true, order: true } },
       },
       orderBy: { createdAt: "desc" },
+    }),
+    // Desativadas: ficam FORA de tudo (vaga, tribo, cobrança), mas nao podem
+    // sumir da tela — e do lugar onde se reativa.
+    db.registration.findMany({
+      where: { status: "INACTIVE" },
+      select: { id: true, publicCode: true, fullName: true, updatedAt: true },
+      orderBy: { updatedAt: "desc" },
     }),
     // Count awaiting review
     db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
@@ -310,6 +320,34 @@ export default async function AdminDashboardPage() {
             Use <span className="text-creme">Exportar</span> para a planilha
             completa.
           </p>
+        )}
+
+        {desativadas.length > 0 && (
+          <details className="mt-6 rounded-xl border border-border bg-surface-2/40 p-4">
+            <summary className="cursor-pointer select-none font-condensed text-xs uppercase tracking-widest text-muted">
+              Desativadas ({desativadas.length}) — fora da vaga e da tribo
+            </summary>
+            <ul className="mt-3 space-y-1 text-sm">
+              {desativadas.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-baseline gap-x-3">
+                  <Link
+                    href={`/admin/inscricao/${d.id}`}
+                    className="font-mono text-xs text-muted underline-offset-2 hover:text-creme hover:underline"
+                  >
+                    {d.publicCode}
+                  </Link>
+                  <span className="text-creme">{d.fullName}</span>
+                  <span className="text-xs text-muted">
+                    desde {d.updatedAt.toLocaleDateString("pt-BR")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted">
+              Abra a ficha para reativar — a tribo é sorteada de novo pela
+              distribuição do dia.
+            </p>
+          </details>
         )}
       </section>
     </div>

@@ -41,10 +41,9 @@ import {
   RemoverDespesaForm,
   RemoverPagamentoForm,
 } from "./DespesaForms";
+import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Custos" };
-
-const ATIVAS = { status: { not: "CANCELLED" } } as const;
 
 /** "1234,56" para preencher o input de edição. */
 function centsParaInput(cents: number): string {

@@ -19,6 +19,7 @@ import { BaixaManualForm, type ParcelaEmAberto } from "./BaixaManualForm";
 import { ReviewForm } from "./ReviewForm";
 import { AlterarFormaForm } from "./AlterarFormaForm";
 import Link from "next/link";
+import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Em aberto" };
 
@@ -63,7 +64,7 @@ export default async function EmAbertoPage() {
   const hoje = new Date();
 
   const registrations = await db.registration.findMany({
-    where: { status: { not: "CANCELLED" } },
+    where: ATIVAS,
     include: {
       payment: { include: { installments: { orderBy: { number: "asc" } } } },
       guardian: { select: { name: true, phone: true } },

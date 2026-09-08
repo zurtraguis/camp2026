@@ -7,12 +7,13 @@ import { TRIBO_META, type TriboId } from "@/lib/tribos";
 import { TRIAGE_FLAG_LABELS } from "@/lib/validation";
 import { signedReceiptUrl } from "@/lib/storage";
 import { bloqueioCupomRetroativo } from "@/lib/coupon";
-import { Badge, ButtonLink, Card } from "@/components/ui";
+import { Badge, ButtonLink, Callout, Card } from "@/components/ui";
 import { ReviewForm } from "@/app/admin/(panel)/em-aberto/ReviewForm";
 import { AplicarCupomForm } from "./AplicarCupomForm";
 import { DeleteRegistrationForm } from "./DeleteRegistrationForm";
 import { ObservacaoForm } from "./ObservacaoForm";
 import { TrocarTriboForm } from "./TrocarTriboForm";
+import { DesativarForm, ReativarForm } from "./AtivacaoForm";
 import Link from "next/link";
 
 interface Props {
@@ -24,6 +25,7 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING_PAYMENT: "Aguardando pagamento",
   AWAITING_REVIEW: "Aguardando revisão",
   CONFIRMED: "Confirmada",
+  INACTIVE: "Desativada",
   CANCELLED: "Cancelada",
 };
 
@@ -31,6 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING_PAYMENT: "border-amarelo-sol/30 bg-amarelo-sol/10 text-amarelo-sol",
   AWAITING_REVIEW: "border-info/30 bg-info/10 text-info",
   CONFIRMED: "border-verde-limao/30 bg-verde-limao/10 text-verde-limao",
+  INACTIVE: "border-border bg-surface-2 text-muted",
   CANCELLED: "border-danger/30 bg-danger/10 text-danger",
 };
 
@@ -600,6 +603,19 @@ export default async function InscricaoDetailPage({ params }: Props) {
         </section>
       )}
 
+      {/* Desativada: o aviso vem antes de tudo, porque muda o sentido da ficha */}
+      {reg.status === "INACTIVE" && (
+        <Callout tone="warning" title="Inscrição desativada">
+          <p>
+            Esta inscrição está fora do acampamento: não ocupa vaga, não está em
+            nenhuma tribo e não aparece na fila de cobrança. Nada foi apagado.
+          </p>
+          <div className="mt-3">
+            <ReativarForm id={reg.id} />
+          </div>
+        </Callout>
+      )}
+
       {/* Observação interna da organização */}
       <section aria-labelledby="obs-heading">
         <Card>
@@ -622,11 +638,16 @@ export default async function InscricaoDetailPage({ params }: Props) {
         <ButtonLink href="/admin" variant="secondary" size="sm">
           Voltar às inscrições
         </ButtonLink>
-        <DeleteRegistrationForm
-          id={reg.id}
-          publicCode={reg.publicCode}
-          fullName={reg.fullName}
-        />
+        <div className="flex flex-wrap items-start gap-3">
+          {reg.status !== "INACTIVE" && (
+            <DesativarForm id={reg.id} fullName={reg.fullName} />
+          )}
+          <DeleteRegistrationForm
+            id={reg.id}
+            publicCode={reg.publicCode}
+            fullName={reg.fullName}
+          />
+        </div>
       </div>
     </div>
   );
