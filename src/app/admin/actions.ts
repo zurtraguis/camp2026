@@ -21,6 +21,9 @@ import {
   pagamentoDespesaSchema,
   observacaoSchema,
   trocarTriboSchema,
+  coordenadoresSchema,
+  coordenadorIdSchema,
+  renomearCoordenadorSchema,
 } from "@/lib/validation";
 import {
   createCoupon,
@@ -44,6 +47,12 @@ import {
   removerPagamentoDespesa,
   removerDespesa,
 } from "@/lib/custos.service";
+import {
+  adicionarCoordenadores,
+  renomearCoordenador,
+  removerCoordenador,
+  distribuirIntercessao,
+} from "@/lib/intercessao.service";
 import {
   rebalance,
   buildTriboUpdate,
@@ -376,6 +385,107 @@ export async function trocarTriboAction(
     };
   } catch {
     return { ok: false, message: "Falha ao trocar a tribo." };
+  }
+}
+
+/* ── Intercessão ───────────────────────────────────────── */
+
+/** Cadastra coordenadores colados de uma vez (um nome por linha). */
+export async function adicionarCoordenadoresAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = coordenadoresSchema.safeParse({ nomes: formData.get("nomes") });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  try {
+    const criados = await adicionarCoordenadores(parsed.data.nomes);
+    revalidatePath("/admin/intercessao");
+    return {
+      ok: true,
+      message:
+        criados === 0
+          ? "Esses coordenadores já estavam cadastrados."
+          : `${criados} coordenador(es) cadastrado(s).`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao cadastrar.",
+    };
+  }
+}
+
+export async function renomearCoordenadorAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = renomearCoordenadorSchema.safeParse({
+    id: formData.get("id"),
+    name: formData.get("name"),
+  });
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  try {
+    await renomearCoordenador(parsed.data.id, parsed.data.name);
+    revalidatePath("/admin/intercessao");
+    return { ok: true, message: "Nome atualizado." };
+  } catch {
+    return { ok: false, message: "Falha ao renomear." };
+  }
+}
+
+/** Remove um coordenador; os campistas dele voltam para a fila. */
+export async function removerCoordenadorAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const parsed = coordenadorIdSchema.safeParse({ id: formData.get("id") });
+  if (!parsed.success) return { ok: false, message: "Dados inválidos." };
+  try {
+    await removerCoordenador(parsed.data.id);
+    revalidatePath("/admin/intercessao");
+    return {
+      ok: true,
+      message: "Coordenador removido. Os campistas dele voltaram para a fila.",
+    };
+  } catch {
+    return { ok: false, message: "Falha ao remover." };
+  }
+}
+
+/**
+ * Distribui os campistas. Por padrão só os que ainda não têm coordenador —
+ * trocar de intercessor toda semana esvazia o sentido da intercessão.
+ */
+export async function distribuirIntercessaoAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const redistribuirTudo = formData.get("redistribuirTudo") === "1";
+  try {
+    const r = await distribuirIntercessao({ redistribuirTudo });
+    revalidatePath("/admin/intercessao");
+    if (r.atribuidos === 0) {
+      return { ok: true, message: "Todo mundo já tem coordenador — nada a fazer." };
+    }
+    return {
+      ok: true,
+      message: r.redistribuiuTudo
+        ? `Tudo redistribuído: ${r.atribuidos} campista(s).`
+        : `${r.atribuidos} campista(s) distribuído(s) entre os coordenadores.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao distribuir.",
+    };
   }
 }
 
