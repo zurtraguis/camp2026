@@ -190,6 +190,38 @@ model Registration {
   @@index([intercessorId])
 }
 
+// Lixeira das inscrições excluídas.
+//
+// O botão Excluir apagava em cascata sem deixar rastro — e uma exclusão feita
+// por engano era perda definitiva. Aqui fica a FOTOGRAFIA completa da inscrição
+// (campista, responsável, saúde, consentimento, pagamento e parcelas) em JSON,
+// o suficiente para reconstruí-la inteira.
+//
+// Não tem relação com Registration de propósito: a inscrição não existe mais.
+model DeletedRegistration {
+  id String @id @default(cuid())
+
+  /// Id original — restaurar com ele mantém válido o caminho do comprovante
+  /// no storage, que é nomeado pelo id da inscrição.
+  registrationId String @unique
+  publicCode     String
+  fullName       String
+
+  deletedAt    DateTime @default(now())
+  deletedById  String?
+  deletedByName String?
+  /// Por que foi excluída. Daqui a um mês ninguém lembra.
+  reason       String?
+
+  /// Fotografia completa, para reconstruir a inscrição.
+  snapshot Json
+
+  /// Quando foi restaurada (null = ainda na lixeira).
+  restoredAt DateTime?
+
+  @@index([deletedAt])
+}
+
 // Coordenador de intercessão: quem ora por um grupo de campistas.
 model Coordinator {
   id        String   @id @default(cuid())

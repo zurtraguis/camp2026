@@ -5,6 +5,7 @@ import { formatBRL } from "@/lib/format";
 import { carneProgress } from "@/lib/carne";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import Link from "next/link";
+import { RestaurarForm } from "./RestaurarForm";
 import { ATIVAS } from "@/lib/registration-status";
 
 export const metadata = { title: "Dashboard" };
@@ -43,6 +44,7 @@ export default async function AdminDashboardPage() {
   const [
     registrations,
     desativadas,
+    excluidas,
     pendingReview,
     confirmed,
     byTribo,
@@ -77,6 +79,19 @@ export default async function AdminDashboardPage() {
       where: { status: "INACTIVE" },
       select: { id: true, publicCode: true, fullName: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
+    }),
+    // Lixeira: o que foi excluído, com a cópia completa guardada.
+    db.deletedRegistration.findMany({
+      orderBy: { deletedAt: "desc" },
+      select: {
+        id: true,
+        publicCode: true,
+        fullName: true,
+        deletedAt: true,
+        deletedByName: true,
+        reason: true,
+        restoredAt: true,
+      },
     }),
     // Count awaiting review
     db.registration.count({ where: { status: "AWAITING_REVIEW" } }),
@@ -346,6 +361,41 @@ export default async function AdminDashboardPage() {
             <p className="mt-3 text-xs text-muted">
               Abra a ficha para reativar — a tribo é sorteada de novo pela
               distribuição do dia.
+            </p>
+          </details>
+        )}
+
+        {excluidas.length > 0 && (
+          <details className="mt-4 rounded-xl border border-border bg-surface-2/40 p-4">
+            <summary className="cursor-pointer select-none font-condensed text-xs uppercase tracking-widest text-muted">
+              Lixeira ({excluidas.filter((e) => !e.restoredAt).length}) — excluídas,
+              com cópia guardada
+            </summary>
+            <ul className="mt-3 space-y-2 text-sm">
+              {excluidas.map((e) => (
+                <li key={e.id} className="flex flex-wrap items-baseline gap-x-3">
+                  <span className="font-mono text-xs text-muted">
+                    {e.publicCode}
+                  </span>
+                  <span className="text-creme">{e.fullName}</span>
+                  <span className="text-xs text-muted">
+                    {e.deletedAt.toLocaleDateString("pt-BR")}
+                    {e.deletedByName ? ` · ${e.deletedByName}` : ""}
+                    {e.reason ? ` · ${e.reason}` : ""}
+                  </span>
+                  {e.restoredAt ? (
+                    <span className="text-xs text-verde-limao">
+                      restaurada em {e.restoredAt.toLocaleDateString("pt-BR")}
+                    </span>
+                  ) : (
+                    <RestaurarForm id={e.id} />
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted">
+              A cópia guarda campista, responsável, saúde, consentimento e
+              pagamento. Ao restaurar, a tribo é sorteada pela distribuição do dia.
             </p>
           </details>
         )}

@@ -223,9 +223,16 @@ export async function findActiveRegistrationByCpf(cpfDigits: string) {
 }
 
 /**
- * Exclui uma inscrição PERMANENTEMENTE. O cascade remove responsável, saúde,
- * consentimento, pagamento e parcelas. Irreversível — usada pelo admin para
- * limpar inscrições duplicadas.
+ * Exclui uma inscrição PERMANENTEMENTE, sem backup. O cascade remove
+ * responsável, saúde, consentimento, pagamento e parcelas.
+ *
+ * NÃO use isto no painel: o admin passa por `excluirComBackup`
+ * (lib/lixeira.service), que guarda a fotografia antes de apagar. Uma exclusão
+ * sem backup já custou uma inscrição irrecuperável (set/2026) — o Postgres do
+ * Supabase não deixa ler a linha morta, e não há PITR.
+ *
+ * Fica exportada só para os testes de integração, que precisam limpar sem
+ * encher a lixeira.
  */
 export async function deleteRegistration(id: string) {
   await db.registration.delete({ where: { id } });
