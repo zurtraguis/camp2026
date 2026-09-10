@@ -43,6 +43,11 @@ export async function resetDb(): Promise<void> {
     db.healthProfile.deleteMany(),
     db.guardian.deleteMany(),
     db.registration.deleteMany(),
+    // A lixeira não tem FK com Registration (a inscrição não existe mais), então
+    // não some por cascade — precisa ser limpa na mão, ou um caso contamina o
+    // seguinte.
+    db.deletedRegistration.deleteMany(),
+    db.coordinator.deleteMany(),
     db.coupon.deleteMany(),
     db.stripeEvent.deleteMany(),
   ]);
