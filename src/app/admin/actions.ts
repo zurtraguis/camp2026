@@ -35,7 +35,7 @@ import {
   aplicarCupomRetroativo,
 } from "@/lib/coupon.service";
 import { formatBRL } from "@/lib/format";
-import { deleteRegistration } from "@/lib/registration.service";
+import { excluirComBackup, restaurarInscricao } from "@/lib/lixeira.service";
 import {
   reviewPixPayment,
   reviewInstallment,
@@ -629,11 +629,14 @@ export async function deleteRegistrationAction(
   _prev: ReviewState,
   formData: FormData,
 ): Promise<ReviewState> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = String(formData.get("id") ?? "");
+  const motivo = String(formData.get("motivo") ?? "");
   if (!id) return { ok: false, message: "Inscrição inválida." };
   try {
-    await deleteRegistration(id);
+    // Guarda a fotografia ANTES de apagar, na mesma transação: se o backup
+    // falhar, nada é excluído.
+    await excluirComBackup(id, { id: admin.id, name: admin.name ?? null }, motivo);
   } catch (err) {
     return {
       ok: false,
@@ -642,6 +645,31 @@ export async function deleteRegistrationAction(
   }
   revalidatePath("/admin");
   redirect("/admin");
+}
+
+/** Reconstrói uma inscrição excluída a partir da fotografia guardada. */
+export async function restaurarInscricaoAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Registro inválido." };
+  try {
+    const r = await restaurarInscricao(id);
+    revalidatePath("/admin");
+    revalidatePath("/admin/tribos");
+    revalidatePath("/admin/em-aberto");
+    return {
+      ok: true,
+      message: `${r.fullName} (${r.publicCode}) foi restaurado(a) — tribo ${TRIBO_META[r.tribo].nome}, pela distribuição de hoje.`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Falha ao restaurar.",
+    };
+  }
 }
 
 /* ── Custos do acampamento ───────────────────────────────────────────────── */
