@@ -3,6 +3,7 @@ import { getRegistrationByCode } from "@/lib/registration.service";
 import { getPixDisplay, getCarneDisplay } from "@/lib/payment.service";
 import { env } from "@/lib/env";
 import { formatBRL } from "@/lib/format";
+import { TRIBO_META, type TriboId } from "@/lib/tribos";
 import { Callout, Badge, Card, Button } from "@/components/ui";
 import { startCheckoutAction } from "@/app/inscricao/actions";
 import { PixPanel } from "./PixPanel";
@@ -32,9 +33,10 @@ export default async function RegistrationStatusPage({
   const reg = await getRegistrationByCode(code);
   if (!reg) notFound();
 
-  // A tribo é atribuída internamente (registration.service) e fica disponível
-  // só no painel admin. A revelação ao campista acontecerá depois — aqui
-  // mostramos apenas um teaser, sem expor a tribo sorteada.
+  // A tribo é revelada NA HORA, assim que a inscrição é feita (set/2026). Antes
+  // ficava escondida até perto do acampamento, e a página só prometia. É nula
+  // apenas quando a inscrição está desativada — aí não há time para mostrar.
+  const tribo = reg.tribo ? TRIBO_META[reg.tribo as TriboId] : null;
   const payment = reg.payment;
   const isConfirmed = reg.status === "CONFIRMED";
   const isAwaitingReview = reg.status === "AWAITING_REVIEW";
@@ -120,25 +122,58 @@ export default async function RegistrationStatusPage({
           </div>
         </div>
 
-        {/* Tribo — sorteio interno; revelação ao campista acontecerá depois */}
-        <div className="rounded-xl border border-verde-limao/30 bg-verde-limao/5 p-4">
-          <p className="text-xs font-condensed uppercase tracking-widest text-muted">
-            Sua tribo
-          </p>
-          <p className="font-display text-3xl text-verde-limao">
-            Será revelada em breve
-          </p>
-          <p className="mt-0.5 text-sm text-muted">
-            O sorteio das tribos será anunciado pela organização mais perto do
-            acampamento. Fique de olho!
-          </p>
-        </div>
+        {/* Tribo — revelada na hora da inscrição */}
+        {tribo ? (
+          <div
+            className="relative overflow-hidden rounded-xl border p-5"
+            style={{
+              borderColor: `${tribo.cor}55`,
+              background: `${tribo.cor}12`,
+            }}
+          >
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 top-0 h-1.5"
+              style={{ backgroundColor: tribo.cor }}
+            />
+            <p className="text-xs font-condensed uppercase tracking-widest text-muted">
+              Sua tribo
+            </p>
+            <p
+              className="font-display text-5xl leading-none"
+              style={{ color: tribo.cor }}
+            >
+              {tribo.nome}
+            </p>
+            <span
+              className="mt-3 inline-block rounded-sm px-3 py-0.5 font-condensed text-sm font-bold uppercase tracking-wide text-[#0b0b0a]"
+              style={{ backgroundColor: tribo.cor }}
+            >
+              {tribo.significado}
+            </span>
+            <p className="mt-3 text-sm leading-relaxed text-creme/80">
+              {tribo.descricao}
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              Baseada nos frutos do Espírito de Gálatas 5.22-23. Ela é sua desde
+              agora — leve pra vida.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border bg-surface-2 p-4">
+            <p className="text-xs font-condensed uppercase tracking-widest text-muted">
+              Sua tribo
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Sem tribo no momento. Fale com a organização.
+            </p>
+          </div>
+        )}
 
         {/* ── Status: CONFIRMED (à vista ou carnê quitado) ── */}
         {isConfirmed && (!isCarne || carneAllPaid) && (
           <Callout tone="success" title="Inscrição confirmada!">
-            Pagamento confirmado. Sua vaga está garantida — a tribo será
-            revelada em breve pela organização. Até breve no RAIZ 2026!
+            Pagamento confirmado. Sua vaga está garantida. Até breve no RAIZ 2026!
           </Callout>
         )}
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   TRIBOS,
+  TRIBO_META,
   chooseTribo,
   applyAssignment,
   emptyCounts,
@@ -52,6 +53,21 @@ describe("trocarTriboSchema (troca manual pelo admin)", () => {
     expect(
       trocarTriboSchema.safeParse({ registrationId: "x", tribo: "" }).success,
     ).toBe(false);
+  });
+});
+
+describe("TRIBO_META", () => {
+  it("toda tribo tem o que a página do campista precisa para revelar", () => {
+    // A revelação acontece na hora da inscrição. Uma tribo sem nome, cor ou
+    // descrição renderiza um cartão vazio na cara do adolescente — melhor
+    // falhar aqui do que lá.
+    for (const t of TRIBOS) {
+      const meta = TRIBO_META[t];
+      expect(meta.nome.length).toBeGreaterThan(0);
+      expect(meta.significado.length).toBeGreaterThan(0);
+      expect(meta.descricao.length).toBeGreaterThan(20);
+      expect(meta.cor).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    }
   });
 });
 

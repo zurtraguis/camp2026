@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { HomeArtExperience } from "./HomeArtExperience";
 
 describe("HomeArtExperience", () => {
-  it("renders the provided home artwork and corrected tribe reveal copy", () => {
+  it("renders the provided home artwork and the immediate tribe-reveal copy", () => {
     render(<HomeArtExperience />);
 
     expect(screen.getByAltText(/arte principal do acampamento raiz/i)).toHaveAttribute(
@@ -16,7 +16,7 @@ describe("HomeArtExperience", () => {
     );
     expect(screen.queryByText(/serão reveladas perto do acamp/i)).toBeNull();
     expect(
-      screen.getByText(/perto do acampamento você saberá qual é a sua tribo/i),
+      screen.getByText(/ao terminar a inscrição você já descobre a sua tribo/i),
     ).toBeInTheDocument();
   });
 
