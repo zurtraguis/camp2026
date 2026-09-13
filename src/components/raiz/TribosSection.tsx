@@ -1,29 +1,23 @@
-const tribos = [
-  {
-    nome: "Ágape",
-    significado: "Amor",
-    descricao:
-      "Amor incondicional que não depende de retribuição. A raiz de tudo o que nasce verdadeiro.",
-    cor: "#C8FF50",
-    icon: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z M12 13v7 M8 16h8",
-  },
-  {
-    nome: "Eirene",
-    significado: "Paz",
-    descricao:
-      "Paz que ultrapassa o entendimento, inteira e restaurada entre o que você é e o que aparenta.",
-    cor: "#A8B92B",
-    icon: "M12 3c2.8 2 5 4.7 5 8.5 0 5-5 8.5-5 8.5s-5-3.5-5-8.5C7 7.7 9.2 5 12 3z M12 9v11 M8.5 13.5h7",
-  },
-  {
-    nome: "Chara",
-    significado: "Alegria",
-    descricao:
-      "Alegria que não é superficial. É fruto de profundidade, não de circunstância.",
-    cor: "#9C6B2E",
-    icon: "M12 21V9 M12 9c-4 0-6-2-7-5 4 0 7 2 7 5z M12 9c4 0 6-2 7-5-4 0-7 2-7 5z",
-  },
-] as const;
+import { TRIBOS, TRIBO_META } from "@/lib/tribos";
+
+/**
+ * Nome, significado, cor e descricao vem de TRIBO_META — a mesma fonte que a
+ * pagina do campista usa ao revelar a tribo. So o desenho fica aqui: e
+ * decoracao desta secao, nao dado de dominio.
+ */
+const ICONES: Record<string, string> = {
+  AGAPE: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z M12 13v7 M8 16h8",
+  EIRENE: "M12 3c2.8 2 5 4.7 5 8.5 0 5-5 8.5-5 8.5s-5-3.5-5-8.5C7 7.7 9.2 5 12 3z M12 9v11 M8.5 13.5h7",
+  CHARA: "M12 21V9 M12 9c-4 0-6-2-7-5 4 0 7 2 7 5z M12 9c4 0 6-2 7-5-4 0-7 2-7 5z",
+};
+
+const tribos = TRIBOS.map((id) => ({
+  nome: TRIBO_META[id].nome,
+  significado: TRIBO_META[id].significado,
+  descricao: TRIBO_META[id].descricao,
+  cor: TRIBO_META[id].cor,
+  icon: ICONES[id],
+}));
 
 export function TribosSection() {
   return (

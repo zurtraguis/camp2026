@@ -27,12 +27,35 @@ export interface TriboMeta {
   significado: string;
   /** Cor de destaque derivada da identidade RAIZ. */
   cor: string;
+  /** O que a tribo carrega — mostrado ao campista quando a tribo é revelada. */
+  descricao: string;
 }
 
 export const TRIBO_META: Record<TriboId, TriboMeta> = {
-  AGAPE: { id: "AGAPE", nome: "Ágape", significado: "amor", cor: "#C8FF50" },
-  EIRENE: { id: "EIRENE", nome: "Eirene", significado: "paz", cor: "#A8B92B" },
-  CHARA: { id: "CHARA", nome: "Chara", significado: "alegria", cor: "#9C6B2E" },
+  AGAPE: {
+    id: "AGAPE",
+    nome: "Ágape",
+    significado: "amor",
+    cor: "#C8FF50",
+    descricao:
+      "Amor incondicional que não depende de retribuição. A raiz de tudo o que nasce verdadeiro.",
+  },
+  EIRENE: {
+    id: "EIRENE",
+    nome: "Eirene",
+    significado: "paz",
+    cor: "#A8B92B",
+    descricao:
+      "Paz que ultrapassa o entendimento, inteira e restaurada entre o que você é e o que aparenta.",
+  },
+  CHARA: {
+    id: "CHARA",
+    nome: "Chara",
+    significado: "alegria",
+    cor: "#9C6B2E",
+    descricao:
+      "Alegria que não é superficial. É fruto de profundidade, não de circunstância.",
+  },
 };
 
 /**

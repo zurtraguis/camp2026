@@ -185,7 +185,7 @@ export function HomeArtExperience() {
                   className="absolute left-1/2 top-[27.1%] h-[12.6%] w-[55%] -translate-x-1/2 bg-black"
                 />
                 <p className="absolute left-1/2 top-[30.3%] w-[54%] -translate-x-1/2 text-center text-[clamp(0.45rem,1.35vw,1.35rem)] leading-tight text-creme">
-                  Perto do acampamento você saberá qual é a sua tribo.
+                  Ao terminar a inscrição você já descobre a sua tribo.
                 </p>
               </>
             )}
