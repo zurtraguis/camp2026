@@ -172,6 +172,11 @@ model Registration {
   intercessorId String?
   intercessor   Coordinator? @relation(fields: [intercessorId], references: [id], onDelete: SetNull)
 
+  // Quarto do alojamento. SetNull: regerar os quartos apaga os antigos, e isso
+  // não pode levar a inscrição junto — só a devolve para "sem quarto".
+  roomId String?
+  room   Room?   @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
   loteId String
   lote   Lote   @relation(fields: [loteId], references: [id])
 
@@ -188,6 +193,23 @@ model Registration {
   @@index([gender, ageAtCamp])
   @@index([isDemo])
   @@index([intercessorId])
+  @@index([roomId])
+}
+
+// Quarto do alojamento. Meninos e meninas nunca no mesmo quarto (gender).
+// O LÍDER não é gravado: é sempre o mais velho entre os membros atuais, calculado
+// na leitura — assim, se o líder for desativado ou trocar de quarto, o próximo
+// mais velho assume sem ninguém precisar lembrar de atualizar.
+model Room {
+  id        String   @id @default(cuid())
+  gender    Gender
+  number    Int
+  capacity  Int
+  createdAt DateTime @default(now())
+
+  campers Registration[]
+
+  @@unique([gender, number])
 }
 
 // Lixeira das inscrições excluídas.
