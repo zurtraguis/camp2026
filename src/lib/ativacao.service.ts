@@ -59,6 +59,7 @@ export async function desativarInscricao(id: string, motivo?: string) {
       status: "INACTIVE",
       tribo: null,
       intercessorId: null,
+      roomId: null, // quem não vem não ocupa cama
       // A observação guarda o porquê — daqui a um mês ninguém lembra.
       adminNotes: reg.adminNotes ? `${reg.adminNotes}\n${nota}` : nota,
     },

@@ -48,6 +48,7 @@ export async function resetDb(): Promise<void> {
     // seguinte.
     db.deletedRegistration.deleteMany(),
     db.coordinator.deleteMany(),
+    db.room.deleteMany(),
     db.coupon.deleteMany(),
     db.stripeEvent.deleteMany(),
   ]);

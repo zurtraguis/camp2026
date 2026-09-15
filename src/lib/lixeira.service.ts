@@ -144,6 +144,7 @@ export async function restaurarInscricao(deletedId: string) {
 
       const dados = { ...reg } as Record<string, unknown>;
       delete dados.intercessorId; // volta para a fila da intercessão
+      delete dados.roomId; // o quarto antigo pode nem existir mais
       dados.tribo = tribo;
 
       await tx.registration.create({

@@ -60,6 +60,7 @@ import {
   desativarInscricao,
   reativarInscricao,
 } from "@/lib/ativacao.service";
+import { gerarTodosOsQuartos, encaixarSemQuarto } from "@/lib/quartos.service";
 import {
   rebalance,
   buildTriboUpdate,
@@ -459,6 +460,52 @@ export async function reativarInscricaoAction(
       ok: false,
       message: err instanceof Error ? err.message : "Falha ao reativar.",
     };
+  }
+}
+
+/* ── Quartos ── */
+
+function lerCapacidade(formData: FormData): number {
+  return Number(String(formData.get("capacidade") ?? "").trim());
+}
+
+/** Gera todos os quartos do zero (redistribui todo mundo). */
+export async function gerarQuartosAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  try {
+    const r = await gerarTodosOsQuartos(lerCapacidade(formData));
+    revalidatePath("/admin/quartos");
+    return {
+      ok: true,
+      message: `${r.quartos} quarto(s) gerado(s) para ${r.campistas} campista(s). O líder de cada um é o mais velho.`,
+    };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Falha ao gerar os quartos." };
+  }
+}
+
+/** Encaixa só quem está sem quarto, sem mexer nos quartos já montados. */
+export async function encaixarQuartosAction(
+  _prev: ReviewState,
+  formData: FormData,
+): Promise<ReviewState> {
+  await requireAdmin();
+  try {
+    const r = await encaixarSemQuarto(lerCapacidade(formData));
+    revalidatePath("/admin/quartos");
+    if (r.encaixados === 0) return { ok: true, message: "Todo mundo já tem quarto." };
+    return {
+      ok: true,
+      message:
+        r.quartosNovos > 0
+          ? `${r.encaixados} encaixado(s); ${r.quartosNovos} quarto(s) novo(s) aberto(s).`
+          : `${r.encaixados} encaixado(s) nos quartos existentes.`,
+    };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Falha ao encaixar." };
   }
 }
 

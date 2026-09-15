@@ -61,7 +61,8 @@ export default async function AdminPanelLayout({
             <NavLink href="/admin/em-aberto">Em aberto</NavLink>
             <NavLink href="/admin/recebidos">Recebidos</NavLink>
             <NavLink href="/admin/custos">Custos</NavLink>
-            <NavLink href="/admin/intercessao">Intercessão</NavLink>
+            <NavLink href="/admin/quartos">Quartos</NavLink>
+          <NavLink href="/admin/intercessao">Intercessão</NavLink>
           <NavLink href="/admin/saude">Saúde</NavLink>
             <NavLink href="/admin/cupons">Cupons</NavLink>
           </nav>
@@ -97,6 +98,7 @@ export default async function AdminPanelLayout({
           <NavLink href="/admin/em-aberto">Em aberto</NavLink>
           <NavLink href="/admin/recebidos">Recebidos</NavLink>
           <NavLink href="/admin/custos">Custos</NavLink>
+          <NavLink href="/admin/quartos">Quartos</NavLink>
           <NavLink href="/admin/intercessao">Intercessão</NavLink>
           <NavLink href="/admin/saude">Saúde</NavLink>
           <NavLink href="/admin/cupons">Cupons</NavLink>
