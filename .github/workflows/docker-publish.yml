@@ -62,7 +62,7 @@ jobs:
             NEXT_PUBLIC_APP_NAME=Acampamento RAIZ 2026
             NEXT_PUBLIC_SUPABASE_URL=https://orhciovdecwaqqsxxdfb.supabase.co
             NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_51Sdwf3LVGuIIljwHjq2WC8lA5Ukxmu8zRXH3XsWKL45PEyrSzgNZlv1bJZB1QLcmz0NFpr3UZVtuGsinz9Vmtl1C00qqVHdf2t
-            NEXT_PUBLIC_PIX_KEY=pixlagoinhamanaus@gmail.com
+            NEXT_PUBLIC_PIX_KEY=paulotorresneto@gmail.com
             NEXT_PUBLIC_PIX_RECEIVER_NAME=ACAMPAMENTO RAIZ
             NEXT_PUBLIC_PIX_RECEIVER_CITY=Manaus
             NEXT_PUBLIC_CONSENT_TERM_VERSION=v1-2026-06
