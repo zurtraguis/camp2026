@@ -34,6 +34,7 @@ const base = (over: Partial<InscricaoParaExport> = {}): InscricaoParaExport => (
     couponCode: null,
     discountPercent: null,
     originalAmountCents: null,
+    reviewNote: null,
     installments: [],
   },
   ...over,
@@ -90,10 +91,11 @@ describe("linhaInscricao", () => {
           couponCode: null,
           discountPercent: null,
           originalAmountCents: null,
+          reviewNote: null,
           installments: [
-            { status: "CONFIRMED" },
-            { status: "AWAITING_REVIEW" },
-            { status: "PENDING" },
+            { number: 1, status: "CONFIRMED", reviewNote: "Baixa manual — dinheiro na igreja." },
+            { number: 2, status: "AWAITING_REVIEW", reviewNote: null },
+            { number: 3, status: "PENDING", reviewNote: null },
           ],
         },
       }),
@@ -118,6 +120,7 @@ describe("linhaInscricao", () => {
           couponCode: "BOLSA",
           discountPercent: 100,
           originalAmountCents: 40000,
+          reviewNote: "Cupom BOLSA (−100%) zerou o valor — nada a pagar.",
           installments: [],
         },
       }),
@@ -138,6 +141,83 @@ describe("linhaInscricao", () => {
   it("leva a observação interna da organização", () => {
     const l = linhaInscricao(base({ adminNotes: "Bolsa combinada." }), "1º Lote");
     expect(l.obs).toBe("Bolsa combinada.");
+  });
+
+  it("traz a OBSERVAÇÃO DE PAGAMENTO — como o dinheiro entrou", () => {
+    // Era o que faltava: baixa manual em espécie, cupom que zerou, cartão da
+    // igreja. Estava só na ficha e na aba Recebidos; quem conferia o caixa pela
+    // planilha de inscritos não via nada.
+    const l = linhaInscricao(
+      base({
+        payment: {
+          method: "PIX",
+          amountCents: 0,
+          status: "CONFIRMED",
+          installmentsTotal: null,
+          couponCode: "BOLSA",
+          discountPercent: 100,
+          originalAmountCents: 40000,
+          reviewNote: "Cupom BOLSA (−100%) zerou o valor — nada a pagar.",
+          installments: [],
+        },
+      }),
+      "2º Lote",
+    );
+    expect(l.obsPagamento).toBe("Cupom BOLSA (−100%) zerou o valor — nada a pagar.");
+  });
+
+  it("no carnê, rotula a observação de CADA parcela", () => {
+    // Sem o "1ª/2ª" as notas viram uma sopa — ainda mais quando duas parcelas
+    // foram pagas de formas diferentes.
+    const l = linhaInscricao(
+      base({
+        payment: {
+          method: "PIX",
+          amountCents: 30000,
+          status: "PENDING",
+          installmentsTotal: 2,
+          couponCode: null,
+          discountPercent: null,
+          originalAmountCents: null,
+          reviewNote: null,
+          installments: [
+            { number: 1, status: "CONFIRMED", reviewNote: "Dinheiro na igreja." },
+            { number: 2, status: "CONFIRMED", reviewNote: "Cartão da maquininha." },
+          ],
+        },
+      }),
+      "1º Lote",
+    );
+    expect(l.obsPagamento).toBe("1ª: Dinheiro na igreja. | 2ª: Cartão da maquininha.");
+  });
+
+  it("sem observação nenhuma, a célula fica vazia — não escreve 'null'", () => {
+    expect(linhaInscricao(base(), "1º Lote").obsPagamento).toBe("");
+    expect(linhaInscricao(base({ payment: null }), null).obsPagamento).toBe("");
+  });
+
+  it("distingue observação DE PAGAMENTO da observação INTERNA", () => {
+    // São duas coisas diferentes e antes só existia uma coluna "Observação",
+    // que era a interna — daí a confusão de achar que a de pagamento sumiu.
+    const l = linhaInscricao(
+      base({
+        adminNotes: "Bolsa combinada com a liderança.",
+        payment: {
+          method: "PIX",
+          amountCents: 40000,
+          status: "CONFIRMED",
+          installmentsTotal: null,
+          couponCode: null,
+          discountPercent: null,
+          originalAmountCents: null,
+          reviewNote: "Baixa manual — recebido em dinheiro.",
+          installments: [],
+        },
+      }),
+      "1º Lote",
+    );
+    expect(l.obsPagamento).toBe("Baixa manual — recebido em dinheiro.");
+    expect(l.obs).toBe("Bolsa combinada com a liderança.");
   });
 
   it("NÃO leva dado de saúde nem CPF — a planilha circula", () => {

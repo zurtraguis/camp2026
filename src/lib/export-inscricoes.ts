@@ -59,7 +59,9 @@ export interface InscricaoParaExport {
     couponCode: string | null;
     discountPercent: number | null;
     originalAmountCents: number | null;
-    installments: { status: string }[];
+    /** Como o dinheiro entrou: baixa manual, cupom, cartão da igreja… */
+    reviewNote: string | null;
+    installments: { number: number; status: string; reviewNote: string | null }[];
   } | null;
 }
 
@@ -93,11 +95,30 @@ export const COLUNAS_INSCRICOES: ColunaExport[] = [
   { header: "Parentesco", key: "parentesco", width: 14 },
   { header: "Telefone responsável", key: "respTel", width: 20 },
   { header: "E-mail responsável", key: "respEmail", width: 28 },
-  { header: "Observação", key: "obs", width: 40 },
+  { header: "Obs. pagamento", key: "obsPagamento", width: 46 },
+  { header: "Observação interna", key: "obs", width: 40 },
   { header: "Inscrito em", key: "criado", width: 14 },
 ];
 
 const dataBR = (d: Date) => d.toLocaleDateString("pt-BR");
+
+/**
+ * Junta as observações de pagamento numa célula só.
+ *
+ * No carnê cada parcela tem a sua, e sem o rótulo "1ª/2ª" as notas viram uma
+ * sopa — ainda mais quando duas parcelas foram pagas de formas diferentes.
+ */
+function notasDoPagamento(
+  p: InscricaoParaExport["payment"],
+): string {
+  if (!p) return "";
+  const partes: string[] = [];
+  if (p.reviewNote?.trim()) partes.push(p.reviewNote.trim());
+  for (const i of p.installments) {
+    if (i.reviewNote?.trim()) partes.push(`${i.number}ª: ${i.reviewNote.trim()}`);
+  }
+  return partes.join(" | ");
+}
 
 /** Uma linha da aba "Inscrições" — as chaves batem com COLUNAS_INSCRICOES. */
 export function linhaInscricao(
@@ -138,6 +159,10 @@ export function linhaInscricao(
     parentesco: r.guardian?.relationship ?? "",
     respTel: r.guardian?.phone ?? "",
     respEmail: r.guardian?.email ?? "",
+    // A trilha de COMO o dinheiro entrou: baixa manual em espécie, cupom que
+    // zerou, cartão da igreja. Estava só na ficha e na aba Recebidos; quem
+    // conferia o caixa pela planilha de inscritos não via nada.
+    obsPagamento: notasDoPagamento(p),
     obs: r.adminNotes ?? "",
     criado: dataBR(r.createdAt),
   };

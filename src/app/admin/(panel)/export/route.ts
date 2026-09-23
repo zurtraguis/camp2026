@@ -53,7 +53,11 @@ export async function GET() {
             couponCode: true,
             discountPercent: true,
             originalAmountCents: true,
-            installments: { select: { status: true } },
+            reviewNote: true,
+            installments: {
+              select: { number: true, status: true, reviewNote: true },
+              orderBy: { number: "asc" },
+            },
           },
         },
         lote: { select: { name: true } },
